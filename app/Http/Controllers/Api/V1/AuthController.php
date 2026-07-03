@@ -47,10 +47,12 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
+                'avatar_url' => $user->avatar ? asset('storage/' . $user->avatar) : null,
             ],
             'business' => [
                 'id' => $business->id,
                 'name' => $business->name,
+                'logo_url' => $business->logo ? asset('storage/' . $business->logo) : null,
             ],
         ], 201);
     }
@@ -82,10 +84,12 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
+                'avatar_url' => $user->avatar ? asset('storage/' . $user->avatar) : null,
             ],
             'business' => $business ? [
                 'id' => $business->id,
                 'name' => $business->name,
+                'logo_url' => $business->logo ? asset('storage/' . $business->logo) : null,
             ] : null,
         ]);
     }

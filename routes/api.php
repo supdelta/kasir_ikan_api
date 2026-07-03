@@ -27,7 +27,20 @@ Route::prefix('v1')->group(function () {
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
+                'avatar_url' => $user->avatar ? asset('storage/' . $user->avatar) : null,
             ];
+        });
+
+        // Upload foto profil
+        Route::post('profile/avatar', function (\Illuminate\Http\Request $req) {
+            $req->validate(['photo' => 'required|image|max:4096']); // maks 4MB
+            $user = $req->user();
+            if ($user->avatar) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar);
+            }
+            $path = $req->file('photo')->store('avatars', 'public');
+            $user->update(['avatar' => $path]);
+            return ['avatar_url' => asset('storage/' . $path)];
         });
 
         // Businesses
@@ -42,6 +55,17 @@ Route::prefix('v1')->group(function () {
             $data = $req->validate(['name' => 'required|string|max:255', 'category' => 'nullable|string']);
             $business->update($data);
             return $business;
+        });
+        // Upload logo usaha
+        Route::post('businesses/{business}/logo', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
+            abort_if($business->user_id !== auth()->id(), 403, 'Akses ditolak.');
+            $req->validate(['photo' => 'required|image|max:4096']);
+            if ($business->logo) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($business->logo);
+            }
+            $path = $req->file('photo')->store('logos', 'public');
+            $business->update(['logo' => $path]);
+            return ['logo_url' => asset('storage/' . $path)];
         });
 
         // Products

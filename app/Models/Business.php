@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Business extends Model
 {
-    protected $fillable = ['user_id', 'name', 'category'];
+    protected $fillable = ['user_id', 'name', 'category', 'logo'];
 
     public function user(): BelongsTo
     {

@@ -20,6 +20,7 @@ class User extends Authenticatable
         'email',
         'phone',
         'password',
+        'avatar',
     ];
 
     public function businesses(): HasMany
