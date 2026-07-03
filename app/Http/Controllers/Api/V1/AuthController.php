@@ -9,7 +9,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -100,6 +102,67 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
         return response()->json(['message' => 'Berhasil keluar.']);
+    }
+
+    public function google(Request $request): JsonResponse
+    {
+        $request->validate(['id_token' => 'required|string']);
+
+        $webClientId = '669597588318-qv3ifilnvckhjvl1rnud87omedovg8os.apps.googleusercontent.com';
+
+        // Verifikasi id_token ke Google
+        $resp = Http::get('https://oauth2.googleapis.com/tokeninfo', [
+            'id_token' => $request->id_token,
+        ]);
+        if ($resp->failed()) {
+            throw ValidationException::withMessages(['id_token' => ['Token Google tidak valid.']]);
+        }
+        $p = $resp->json();
+
+        // Pastikan token memang untuk aplikasi kita & dari Google
+        if (($p['aud'] ?? null) !== $webClientId) {
+            throw ValidationException::withMessages(['id_token' => ['Token Google tidak cocok dengan aplikasi.']]);
+        }
+        if (!in_array($p['iss'] ?? '', ['accounts.google.com', 'https://accounts.google.com'])) {
+            throw ValidationException::withMessages(['id_token' => ['Sumber token tidak valid.']]);
+        }
+
+        $email = $p['email'] ?? null;
+        if (!$email) {
+            throw ValidationException::withMessages(['id_token' => ['Email tidak tersedia dari Google.']]);
+        }
+
+        $user = User::firstOrCreate(
+            ['email' => $email],
+            [
+                'name' => $p['name'] ?? explode('@', $email)[0],
+                'password' => Hash::make(Str::random(40)),
+            ]
+        );
+
+        // Pastikan minimal punya 1 usaha
+        $business = $user->businesses()->first()
+            ?? $user->businesses()->create(['name' => $p['name'] ?? 'Usaha Saya']);
+
+        $token = $user->createToken('mobile')->plainTextToken;
+
+        return response()->json([
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'avatar_url' => $user->avatar
+                    ? asset('storage/' . $user->avatar)
+                    : ($p['picture'] ?? null),
+            ],
+            'business' => [
+                'id' => $business->id,
+                'name' => $business->name,
+                'logo_url' => $business->logo ? asset('storage/' . $business->logo) : null,
+            ],
+        ]);
     }
 
     public function forgotPassword(Request $request): JsonResponse
