@@ -19,7 +19,7 @@ DB_PASS="GANTI_PASSWORD_KUAT_DISINI"    # <-- WAJIB ganti
 # Cara ambil kode. Pilih salah satu:
 #  - Kalau sudah push ke GitHub, isi REPO_URL.
 #  - Kalau upload manual (scp/rsync) ke $APP_DIR, biarkan REPO_URL kosong "".
-REPO_URL="https://github.com/jodiansyah/kasir_ikan_api.git"   # ganti 'jodiansyah' dg username GitHub kamu
+REPO_URL="https://github.com/supdelta/kasir_ikan_api.git"
 APP_DIR="/var/www/kasir_ikan_api"
 # =========================================
 
