@@ -7,7 +7,9 @@ use App\Models\Business;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -98,5 +100,61 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
         return response()->json(['message' => 'Berhasil keluar.']);
+    }
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $user = User::where('email', $request->email)->first();
+        if ($user) {
+            $code = (string) random_int(100000, 999999);
+            DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $user->email],
+                ['token' => Hash::make($code), 'created_at' => now()]
+            );
+
+            Mail::raw(
+                "Kode reset password Kasir Ikan kamu: {$code}\n\n"
+                    . "Kode berlaku 15 menit. Abaikan email ini jika kamu tidak meminta reset password.",
+                function ($m) use ($user) {
+                    $m->to($user->email)->subject('Kode Reset Password - Kasir Ikan');
+                }
+            );
+        }
+
+        // Selalu balas sukses supaya tidak membocorkan apakah email terdaftar.
+        return response()->json([
+            'message' => 'Jika email terdaftar, kode reset sudah dikirim ke email kamu.',
+        ]);
+    }
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => 'required|email',
+            'code' => 'required|string',
+            'password' => 'required|string|min:6',
+        ]);
+
+        $row = DB::table('password_reset_tokens')->where('email', $data['email'])->first();
+
+        if (!$row || !Hash::check($data['code'], $row->token)) {
+            throw ValidationException::withMessages(['code' => ['Kode salah.']]);
+        }
+
+        if (now()->diffInMinutes($row->created_at) > 15) {
+            throw ValidationException::withMessages(['code' => ['Kode kadaluarsa. Minta kode baru.']]);
+        }
+
+        $user = User::where('email', $data['email'])->first();
+        if (!$user) {
+            throw ValidationException::withMessages(['email' => ['Email tidak ditemukan.']]);
+        }
+
+        $user->update(['password' => Hash::make($data['password'])]);
+        DB::table('password_reset_tokens')->where('email', $data['email'])->delete();
+
+        return response()->json(['message' => 'Password berhasil diubah. Silakan login.']);
     }
 }
