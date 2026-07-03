@@ -17,11 +17,31 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout']);
 
+        // Profil akun — update nama
+        Route::patch('profile', function (\Illuminate\Http\Request $req) {
+            $user = $req->user();
+            $data = $req->validate(['name' => 'required|string|max:255']);
+            $user->update($data);
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+            ];
+        });
+
         // Businesses
         Route::get('businesses', fn() => auth()->user()->businesses);
         Route::post('businesses', function (\Illuminate\Http\Request $req) {
             $data = $req->validate(['name' => 'required|string', 'category' => 'nullable|string']);
             return auth()->user()->businesses()->create($data);
+        });
+        // Update nama usaha (anti-IDOR: cek kepemilikan)
+        Route::patch('businesses/{business}', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
+            abort_if($business->user_id !== auth()->id(), 403, 'Akses ditolak.');
+            $data = $req->validate(['name' => 'required|string|max:255', 'category' => 'nullable|string']);
+            $business->update($data);
+            return $business;
         });
 
         // Products

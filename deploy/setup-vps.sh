@@ -45,7 +45,9 @@ fi
 echo "==> [4/9] Buat database & user MySQL"
 mysql -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';"
+mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASS}';"
 mysql -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';"
+mysql -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'127.0.0.1';"
 mysql -e "FLUSH PRIVILEGES;"
 
 echo "==> [5/9] Ambil kode aplikasi"
@@ -67,7 +69,7 @@ composer install --no-dev --optimize-autoloader --no-interaction
 
 echo "==> [7/9] Konfigurasi .env"
 if [ ! -f .env ]; then
-  cp deploy/.env.production .env
+  cp deploy/env.production .env
 fi
 sed -i "s|^APP_URL=.*|APP_URL=https://${DOMAIN}|"        .env
 sed -i "s|^DB_DATABASE=.*|DB_DATABASE=${DB_NAME}|"       .env
