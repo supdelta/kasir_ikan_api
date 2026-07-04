@@ -24,6 +24,15 @@ Route::prefix('v1')->group(function () {
         // Scan bon (AI) — key di server
         Route::post('scan-bon', [ScanController::class, 'bon']);
 
+        // Status langganan
+        Route::get('subscription', function (\Illuminate\Http\Request $req) {
+            $u = $req->user();
+            return [
+                'is_premium' => $u->isPremium(),
+                'premium_until' => $u->premium_until,
+            ];
+        });
+
         // Profil akun — update nama
         Route::patch('profile', function (\Illuminate\Http\Request $req) {
             $user = $req->user();
@@ -63,6 +72,14 @@ Route::prefix('v1')->group(function () {
                 });
         });
         Route::post('businesses', function (\Illuminate\Http\Request $req) {
+            $user = auth()->user();
+            // Gratis hanya boleh 1 usaha; multi-usaha khusus Premium
+            if (!$user->isPremium() && $user->businesses()->count() >= 1) {
+                return response()->json([
+                    'message' => 'Multi-usaha khusus Premium. Upgrade untuk menambah usaha.',
+                    'premium_required' => true,
+                ], 403);
+            }
             $data = $req->validate(['name' => 'required|string', 'category' => 'nullable|string']);
             $business = auth()->user()->businesses()->create($data);
             $business->members()->create([
@@ -143,6 +160,12 @@ Route::prefix('v1')->group(function () {
         Route::post('businesses/{business}/members', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
             $m = $business->memberFor(auth()->id());
             abort_if(!$m || !$m->isOwner(), 403, 'Hanya pemilik yang bisa kelola karyawan.');
+            if (!auth()->user()->isPremium()) {
+                return response()->json([
+                    'message' => 'Kelola karyawan khusus Premium. Upgrade untuk menambah staff.',
+                    'premium_required' => true,
+                ], 403);
+            }
             $data = $req->validate([
                 'email' => 'required|email',
                 'name' => 'nullable|string|max:255',

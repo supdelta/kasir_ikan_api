@@ -55,6 +55,8 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'avatar_url' => $user->avatar ? asset('storage/' . $user->avatar) : null,
+                'is_premium' => $user->isPremium(),
+                'premium_until' => $user->premium_until,
             ],
             'business' => [
                 'id' => $business->id,
@@ -93,6 +95,8 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'avatar_url' => $user->avatar ? asset('storage/' . $user->avatar) : null,
+                'is_premium' => $user->isPremium(),
+                'premium_until' => $user->premium_until,
             ],
             'business' => $business ? [
                 'id' => $business->id,
@@ -165,6 +169,8 @@ class AuthController extends Controller
                 'avatar_url' => $user->avatar
                     ? asset('storage/' . $user->avatar)
                     : ($p['picture'] ?? null),
+                'is_premium' => $user->isPremium(),
+                'premium_until' => $user->premium_until,
             ],
             'business' => [
                 'id' => $business->id,

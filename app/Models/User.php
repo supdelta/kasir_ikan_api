@@ -21,11 +21,18 @@ class User extends Authenticatable
         'phone',
         'password',
         'avatar',
+        'premium_until',
     ];
 
     public function businesses(): HasMany
     {
         return $this->hasMany(Business::class);
+    }
+
+    /** True jika langganan premium masih aktif. */
+    public function isPremium(): bool
+    {
+        return $this->premium_until !== null && $this->premium_until->isFuture();
     }
 
     /**
@@ -47,6 +54,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'premium_until' => 'datetime',
             'password' => 'hashed',
         ];
     }

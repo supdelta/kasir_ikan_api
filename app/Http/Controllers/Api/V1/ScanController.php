@@ -14,6 +14,13 @@ class ScanController extends Controller
      */
     public function bon(Request $request): JsonResponse
     {
+        if (!$request->user()->isPremium()) {
+            return response()->json([
+                'message' => 'Scan bon AI khusus Premium. Upgrade untuk memakai fitur ini.',
+                'premium_required' => true,
+            ], 403);
+        }
+
         $request->validate(['photo' => 'required|image|max:8192']);
 
         $apiKey = config('services.anthropic.key');
