@@ -29,6 +29,7 @@ Route::prefix('v1')->group(function () {
         Route::get('admin/users', [AdminController::class, 'users']);
         Route::post('admin/users/{user}/premium', [AdminController::class, 'grantPremium']);
         Route::delete('admin/users/{user}/premium', [AdminController::class, 'revokePremium']);
+        Route::delete('admin/users/{user}', [AdminController::class, 'deleteUser']);
 
         // Status langganan
         Route::get('subscription', function (\Illuminate\Http\Request $req) {
@@ -49,7 +50,7 @@ Route::prefix('v1')->group(function () {
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
-                'avatar_url' => $user->avatar ? asset('storage/' . $user->avatar) : null,
+                'avatar_url' => $user->avatar_url,
             ];
         });
 
@@ -160,7 +161,7 @@ Route::prefix('v1')->group(function () {
                     'email' => $mem->user->email,
                     'role' => $mem->role,
                     'can_view_reports' => (bool) $mem->can_view_reports,
-                    'avatar_url' => $mem->user->avatar ? asset('storage/' . $mem->user->avatar) : null,
+                    'avatar_url' => $mem->user->avatar_url,
                 ]);
         });
         Route::post('businesses/{business}/members', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {

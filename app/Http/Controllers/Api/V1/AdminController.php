@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\BusinessMember;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
@@ -65,5 +67,30 @@ class AdminController extends Controller
         $user->save();
 
         return response()->json(['message' => 'Premium dicabut.']);
+    }
+
+    public function deleteUser(Request $request, User $user): JsonResponse
+    {
+        $this->ensureAdmin($request);
+
+        if ($user->id === $request->user()->id) {
+            return response()->json(['message' => 'Tidak bisa menghapus akun sendiri.'], 422);
+        }
+        if ($user->is_super_admin) {
+            return response()->json(['message' => 'Tidak bisa menghapus sesama Super Admin.'], 422);
+        }
+
+        DB::transaction(function () use ($user) {
+            // Hapus usaha milik user -> cascade ke produk/transaksi/piutang/qris/anggota
+            $user->businesses()->get()->each(fn($b) => $b->delete());
+            // Bersihkan keanggotaan staff di usaha lain
+            BusinessMember::where('user_id', $user->id)->delete();
+            // Cabut token login
+            $user->tokens()->delete();
+            // Hapus user (transaksi di usaha lain -> user_id jadi null)
+            $user->delete();
+        });
+
+        return response()->json(['message' => 'User dan semua datanya dihapus.']);
     }
 }

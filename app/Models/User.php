@@ -36,6 +36,17 @@ class User extends Authenticatable
         return $this->premium_until !== null && $this->premium_until->isFuture();
     }
 
+    /** URL foto profil (handle path storage maupun URL eksternal spt Google). */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (empty($this->avatar)) {
+            return null;
+        }
+        return str_starts_with($this->avatar, 'http')
+            ? $this->avatar
+            : asset('storage/' . $this->avatar);
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *

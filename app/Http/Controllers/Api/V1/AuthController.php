@@ -54,7 +54,7 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
-                'avatar_url' => $user->avatar ? asset('storage/' . $user->avatar) : null,
+                'avatar_url' => $user->avatar_url,
                 'is_premium' => $user->isPremium(),
                 'premium_until' => $user->premium_until,
                 'is_super_admin' => (bool) $user->is_super_admin,
@@ -95,7 +95,7 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
-                'avatar_url' => $user->avatar ? asset('storage/' . $user->avatar) : null,
+                'avatar_url' => $user->avatar_url,
                 'is_premium' => $user->isPremium(),
                 'premium_until' => $user->premium_until,
                 'is_super_admin' => (bool) $user->is_super_admin,
@@ -150,6 +150,11 @@ class AuthController extends Controller
             ]
         );
 
+        // Simpan foto Google jika user belum punya avatar
+        if (empty($user->avatar) && !empty($p['picture'])) {
+            $user->update(['avatar' => $p['picture']]);
+        }
+
         // Pastikan minimal punya 1 usaha (owner) atau usaha yang diikuti (staff)
         $business = Business::whereHas('members', fn($q) => $q->where('user_id', $user->id))->first();
         if (!$business) {
@@ -168,9 +173,7 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
-                'avatar_url' => $user->avatar
-                    ? asset('storage/' . $user->avatar)
-                    : ($p['picture'] ?? null),
+                'avatar_url' => $user->avatar_url,
                 'is_premium' => $user->isPremium(),
                 'premium_until' => $user->premium_until,
                 'is_super_admin' => (bool) $user->is_super_admin,
