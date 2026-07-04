@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ReceivableController;
@@ -23,6 +24,11 @@ Route::prefix('v1')->group(function () {
 
         // Scan bon (AI) — key di server
         Route::post('scan-bon', [ScanController::class, 'bon']);
+
+        // ===== Panel Super Admin (developer) =====
+        Route::get('admin/users', [AdminController::class, 'users']);
+        Route::post('admin/users/{user}/premium', [AdminController::class, 'grantPremium']);
+        Route::delete('admin/users/{user}/premium', [AdminController::class, 'revokePremium']);
 
         // Status langganan
         Route::get('subscription', function (\Illuminate\Http\Request $req) {

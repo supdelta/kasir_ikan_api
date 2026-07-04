@@ -22,6 +22,7 @@ class User extends Authenticatable
         'password',
         'avatar',
         'premium_until',
+        'is_super_admin',
     ];
 
     public function businesses(): HasMany
@@ -55,6 +56,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'premium_until' => 'datetime',
+            'is_super_admin' => 'boolean',
             'password' => 'hashed',
         ];
     }
