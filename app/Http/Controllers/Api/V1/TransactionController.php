@@ -15,7 +15,7 @@ class TransactionController extends Controller
 {
     public function index(Request $request, Business $business): JsonResponse
     {
-        $this->authorizeBusiness($business);
+        $this->authorizeMember($business);
 
         $query = $business->transactions()
             ->with('product')
@@ -30,13 +30,13 @@ class TransactionController extends Controller
 
     public function store(Request $request, Business $business): JsonResponse
     {
-        $this->authorizeBusiness($business);
+        $this->authorizeMember($business);
         return response()->json($this->createTransaction($request->all(), $business), 201);
     }
 
     public function bulkSync(Request $request, Business $business): JsonResponse
     {
-        $this->authorizeBusiness($business);
+        $this->authorizeMember($business);
 
         $request->validate([
             'transactions' => 'required|array',
@@ -80,7 +80,7 @@ class TransactionController extends Controller
 
     public function destroy(Business $business, Transaction $transaction): JsonResponse
     {
-        $this->authorizeBusiness($business);
+        $this->authorizeOwner($business); // hapus = owner saja
         abort_if($transaction->business_id !== $business->id, 403);
 
         // Tidak boleh hapus transaksi yang piutangnya sudah ada cicilan
@@ -146,10 +146,5 @@ class TransactionController extends Controller
 
             return $tx;
         });
-    }
-
-    private function authorizeBusiness(Business $business): void
-    {
-        abort_if($business->user_id !== auth()->id(), 403, 'Akses ditolak.');
     }
 }

@@ -12,13 +12,13 @@ class ProductController extends Controller
 {
     public function index(Business $business): JsonResponse
     {
-        $this->authorizeBusiness($business);
+        $this->authorizeMember($business);
         return response()->json($business->products()->get());
     }
 
     public function store(Request $request, Business $business): JsonResponse
     {
-        $this->authorizeBusiness($business);
+        $this->authorizeMember($business);
 
         $data = $request->validate([
             'name' => 'required|string|max:255',
@@ -33,7 +33,7 @@ class ProductController extends Controller
 
     public function update(Request $request, Business $business, Product $product): JsonResponse
     {
-        $this->authorizeBusiness($business);
+        $this->authorizeMember($business);
         $this->authorizeProduct($business, $product);
 
         $data = $request->validate([
@@ -49,16 +49,11 @@ class ProductController extends Controller
 
     public function destroy(Business $business, Product $product): JsonResponse
     {
-        $this->authorizeBusiness($business);
+        $this->authorizeOwner($business); // hapus = owner saja
         $this->authorizeProduct($business, $product);
 
         $product->delete();
         return response()->json(['message' => 'Produk dihapus.']);
-    }
-
-    private function authorizeBusiness(Business $business): void
-    {
-        abort_if($business->user_id !== auth()->id(), 403, 'Akses ditolak.');
     }
 
     private function authorizeProduct(Business $business, Product $product): void

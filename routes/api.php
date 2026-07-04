@@ -50,22 +50,40 @@ Route::prefix('v1')->group(function () {
             return ['avatar_url' => asset('storage/' . $path)];
         });
 
-        // Businesses
-        Route::get('businesses', fn() => auth()->user()->businesses);
+        // Businesses — semua usaha yang bisa diakses (owner + staff), dengan role
+        Route::get('businesses', function () {
+            $userId = auth()->id();
+            return \App\Models\Business::whereHas('members', fn($q) => $q->where('user_id', $userId))
+                ->get()
+                ->map(function ($b) use ($userId) {
+                    $m = $b->memberFor($userId);
+                    $b->setAttribute('role', $m?->role ?? 'staff');
+                    $b->setAttribute('can_view_reports', (bool) ($m?->can_view_reports ?? false));
+                    return $b;
+                });
+        });
         Route::post('businesses', function (\Illuminate\Http\Request $req) {
             $data = $req->validate(['name' => 'required|string', 'category' => 'nullable|string']);
-            return auth()->user()->businesses()->create($data);
+            $business = auth()->user()->businesses()->create($data);
+            $business->members()->create([
+                'user_id' => auth()->id(), 'role' => 'owner', 'can_view_reports' => true,
+            ]);
+            $business->setAttribute('role', 'owner');
+            $business->setAttribute('can_view_reports', true);
+            return $business;
         });
-        // Update nama usaha (anti-IDOR: cek kepemilikan)
+        // Update nama usaha — owner saja
         Route::patch('businesses/{business}', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
-            abort_if($business->user_id !== auth()->id(), 403, 'Akses ditolak.');
+            $m = $business->memberFor(auth()->id());
+            abort_if(!$m || !$m->isOwner(), 403, 'Hanya pemilik yang bisa mengubah usaha.');
             $data = $req->validate(['name' => 'required|string|max:255', 'category' => 'nullable|string']);
             $business->update($data);
             return $business;
         });
-        // Upload logo usaha
+        // Upload logo usaha — owner saja
         Route::post('businesses/{business}/logo', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
-            abort_if($business->user_id !== auth()->id(), 403, 'Akses ditolak.');
+            $m = $business->memberFor(auth()->id());
+            abort_if(!$m || !$m->isOwner(), 403, 'Hanya pemilik yang bisa mengubah usaha.');
             $req->validate(['photo' => 'required|image|max:4096']);
             if ($business->logo) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($business->logo);
@@ -75,9 +93,9 @@ Route::prefix('v1')->group(function () {
             return ['logo_url' => asset('storage/' . $path)];
         });
 
-        // QRIS — ambil setting
+        // QRIS — ambil setting (anggota boleh lihat)
         Route::get('businesses/{business}/qris', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
-            abort_if($business->user_id !== auth()->id(), 403, 'Akses ditolak.');
+            abort_if(!$business->memberFor(auth()->id()), 403, 'Akses ditolak.');
             $q = $business->qrisSetting;
             if (!$q) return response()->json(null);
             return [
@@ -85,9 +103,10 @@ Route::prefix('v1')->group(function () {
                 'image_url' => asset('storage/' . $q->image_path),
             ];
         });
-        // QRIS — upload / ganti gambar QR
+        // QRIS — upload / ganti gambar QR (owner saja)
         Route::post('businesses/{business}/qris', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
-            abort_if($business->user_id !== auth()->id(), 403, 'Akses ditolak.');
+            $m = $business->memberFor(auth()->id());
+            abort_if(!$m || !$m->isOwner(), 403, 'Hanya pemilik yang bisa mengubah QRIS.');
             $req->validate([
                 'photo' => 'required|image|max:4096',
                 'merchant_name' => 'nullable|string|max:255',
@@ -105,6 +124,69 @@ Route::prefix('v1')->group(function () {
                 'merchant_name' => $business->qrisSetting()->first()->merchant_name,
                 'image_url' => asset('storage/' . $path),
             ];
+        });
+
+        // ===== Kelola Karyawan (owner saja) =====
+        Route::get('businesses/{business}/members', function (\App\Models\Business $business) {
+            $m = $business->memberFor(auth()->id());
+            abort_if(!$m || !$m->isOwner(), 403, 'Hanya pemilik yang bisa kelola karyawan.');
+            return $business->members()->with('user:id,name,email,avatar')->orderBy('role')->get()
+                ->map(fn($mem) => [
+                    'user_id' => $mem->user_id,
+                    'name' => $mem->user->name,
+                    'email' => $mem->user->email,
+                    'role' => $mem->role,
+                    'can_view_reports' => (bool) $mem->can_view_reports,
+                    'avatar_url' => $mem->user->avatar ? asset('storage/' . $mem->user->avatar) : null,
+                ]);
+        });
+        Route::post('businesses/{business}/members', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
+            $m = $business->memberFor(auth()->id());
+            abort_if(!$m || !$m->isOwner(), 403, 'Hanya pemilik yang bisa kelola karyawan.');
+            $data = $req->validate([
+                'email' => 'required|email',
+                'name' => 'nullable|string|max:255',
+                'password' => 'nullable|string|min:6',
+                'can_view_reports' => 'boolean',
+            ]);
+            $user = \App\Models\User::where('email', $data['email'])->first();
+            if (!$user) {
+                if (empty($data['name']) || empty($data['password'])) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'email' => ['Email belum terdaftar. Isi nama & password untuk membuatkan akun staff.'],
+                    ]);
+                }
+                $user = \App\Models\User::create([
+                    'name' => $data['name'],
+                    'email' => $data['email'],
+                    'password' => \Illuminate\Support\Facades\Hash::make($data['password']),
+                ]);
+            }
+            if ($business->memberFor($user->id)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'email' => ['Orang ini sudah jadi anggota usaha.'],
+                ]);
+            }
+            $business->members()->create([
+                'user_id' => $user->id,
+                'role' => 'staff',
+                'can_view_reports' => $data['can_view_reports'] ?? false,
+            ]);
+            return response()->json(['message' => 'Staff ditambahkan.'], 201);
+        });
+        Route::patch('businesses/{business}/members/{userId}', function (\Illuminate\Http\Request $req, \App\Models\Business $business, $userId) {
+            $m = $business->memberFor(auth()->id());
+            abort_if(!$m || !$m->isOwner(), 403, 'Hanya pemilik yang bisa kelola karyawan.');
+            $mem = $business->members()->where('user_id', $userId)->where('role', 'staff')->firstOrFail();
+            $data = $req->validate(['can_view_reports' => 'required|boolean']);
+            $mem->update(['can_view_reports' => $data['can_view_reports']]);
+            return response()->json(['message' => 'Akses staff diperbarui.']);
+        });
+        Route::delete('businesses/{business}/members/{userId}', function (\App\Models\Business $business, $userId) {
+            $m = $business->memberFor(auth()->id());
+            abort_if(!$m || !$m->isOwner(), 403, 'Hanya pemilik yang bisa kelola karyawan.');
+            $business->members()->where('user_id', $userId)->where('role', 'staff')->delete();
+            return response()->json(['message' => 'Staff dihapus dari usaha.']);
         });
 
         // Products

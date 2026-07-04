@@ -42,4 +42,15 @@ class Business extends Model
     {
         return $this->hasOne(QrisSetting::class);
     }
+
+    public function members(): HasMany
+    {
+        return $this->hasMany(BusinessMember::class);
+    }
+
+    /** Keanggotaan user tertentu (null jika bukan anggota). */
+    public function memberFor(int $userId): ?BusinessMember
+    {
+        return $this->members()->where('user_id', $userId)->first();
+    }
 }

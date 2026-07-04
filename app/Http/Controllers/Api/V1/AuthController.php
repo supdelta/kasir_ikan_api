@@ -41,6 +41,9 @@ class AuthController extends Controller
             'user_id' => $user->id,
             'name' => $data['business_name'],
         ]);
+        $business->members()->create([
+            'user_id' => $user->id, 'role' => 'owner', 'can_view_reports' => true,
+        ]);
 
         $token = $user->createToken('mobile')->plainTextToken;
 
@@ -79,7 +82,8 @@ class AuthController extends Controller
         }
 
         $token = $user->createToken('mobile')->plainTextToken;
-        $business = $user->businesses()->first();
+        // Usaha yang bisa diakses (owner atau staff)
+        $business = Business::whereHas('members', fn($q) => $q->where('user_id', $user->id))->first();
 
         return response()->json([
             'token' => $token,
@@ -140,9 +144,14 @@ class AuthController extends Controller
             ]
         );
 
-        // Pastikan minimal punya 1 usaha
-        $business = $user->businesses()->first()
-            ?? $user->businesses()->create(['name' => $p['name'] ?? 'Usaha Saya']);
+        // Pastikan minimal punya 1 usaha (owner) atau usaha yang diikuti (staff)
+        $business = Business::whereHas('members', fn($q) => $q->where('user_id', $user->id))->first();
+        if (!$business) {
+            $business = $user->businesses()->create(['name' => $p['name'] ?? 'Usaha Saya']);
+            $business->members()->create([
+                'user_id' => $user->id, 'role' => 'owner', 'can_view_reports' => true,
+            ]);
+        }
 
         $token = $user->createToken('mobile')->plainTextToken;
 

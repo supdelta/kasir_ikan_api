@@ -11,7 +11,8 @@ class ReportController extends Controller
 {
     public function daily(Request $request, Business $business): JsonResponse
     {
-        $this->authorizeBusiness($business);
+        $m = $this->authorizeMember($business);
+        abort_if(!$m->isOwner() && !$m->can_view_reports, 403, 'Kamu tidak punya akses laporan.');
 
         $date = $request->get('date', today()->toDateString());
 
@@ -60,10 +61,5 @@ class ReportController extends Controller
             'breakdown' => $breakdown,
             'top_products' => $topProducts,
         ]);
-    }
-
-    private function authorizeBusiness(Business $business): void
-    {
-        abort_if($business->user_id !== auth()->id(), 403, 'Akses ditolak.');
     }
 }

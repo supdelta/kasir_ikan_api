@@ -13,7 +13,7 @@ class ReceivableController extends Controller
 {
     public function index(Request $request, Business $business): JsonResponse
     {
-        $this->authorizeBusiness($business);
+        $this->authorizeMember($business);
 
         $query = $business->receivables()->with('payments')->orderByDesc('created_at');
 
@@ -28,7 +28,7 @@ class ReceivableController extends Controller
 
     public function store(Request $request, Business $business): JsonResponse
     {
-        $this->authorizeBusiness($business);
+        $this->authorizeMember($business);
 
         $data = $request->validate([
             'customer_name' => 'required|string|max:255',
@@ -46,7 +46,7 @@ class ReceivableController extends Controller
 
     public function pay(Request $request, Business $business, Receivable $receivable): JsonResponse
     {
-        $this->authorizeBusiness($business);
+        $this->authorizeMember($business);
         abort_if($receivable->business_id !== $business->id, 403);
 
         $data = $request->validate([
@@ -71,7 +71,7 @@ class ReceivableController extends Controller
 
     public function destroy(Business $business, Receivable $receivable): JsonResponse
     {
-        $this->authorizeBusiness($business);
+        $this->authorizeOwner($business); // hapus = owner saja
         abort_if($receivable->business_id !== $business->id, 403);
 
         if ($receivable->payments()->exists()) {
@@ -80,10 +80,5 @@ class ReceivableController extends Controller
 
         $receivable->delete();
         return response()->json(['message' => 'Piutang dihapus.']);
-    }
-
-    private function authorizeBusiness(Business $business): void
-    {
-        abort_if($business->user_id !== auth()->id(), 403, 'Akses ditolak.');
     }
 }
