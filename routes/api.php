@@ -71,6 +71,38 @@ Route::prefix('v1')->group(function () {
             return ['logo_url' => asset('storage/' . $path)];
         });
 
+        // QRIS — ambil setting
+        Route::get('businesses/{business}/qris', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
+            abort_if($business->user_id !== auth()->id(), 403, 'Akses ditolak.');
+            $q = $business->qrisSetting;
+            if (!$q) return response()->json(null);
+            return [
+                'merchant_name' => $q->merchant_name,
+                'image_url' => asset('storage/' . $q->image_path),
+            ];
+        });
+        // QRIS — upload / ganti gambar QR
+        Route::post('businesses/{business}/qris', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
+            abort_if($business->user_id !== auth()->id(), 403, 'Akses ditolak.');
+            $req->validate([
+                'photo' => 'required|image|max:4096',
+                'merchant_name' => 'nullable|string|max:255',
+            ]);
+            $q = $business->qrisSetting;
+            if ($q && $q->image_path) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($q->image_path);
+            }
+            $path = $req->file('photo')->store('qris', 'public');
+            $business->qrisSetting()->updateOrCreate(
+                ['business_id' => $business->id],
+                ['image_path' => $path, 'merchant_name' => $req->merchant_name ?: $business->name]
+            );
+            return [
+                'merchant_name' => $business->qrisSetting()->first()->merchant_name,
+                'image_url' => asset('storage/' . $path),
+            ];
+        });
+
         // Products
         Route::prefix('businesses/{business}')->group(function () {
             Route::get('products', [ProductController::class, 'index']);
