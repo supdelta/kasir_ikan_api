@@ -26,6 +26,7 @@ Route::prefix('v1')->group(function () {
         Route::post('scan-bon', [ScanController::class, 'bon']);
 
         // ===== Panel Super Admin (developer) =====
+        Route::get('admin/stats', [AdminController::class, 'stats']);
         Route::get('admin/users', [AdminController::class, 'users']);
         Route::post('admin/users/{user}/premium', [AdminController::class, 'grantPremium']);
         Route::delete('admin/users/{user}/premium', [AdminController::class, 'revokePremium']);
@@ -38,6 +39,26 @@ Route::prefix('v1')->group(function () {
                 'is_premium' => $u->isPremium(),
                 'premium_until' => $u->premium_until,
             ];
+        });
+
+        // ===== Notifikasi in-app =====
+        Route::get('notifications', function (\Illuminate\Http\Request $req) {
+            return \App\Models\AppNotification::where('user_id', $req->user()->id)
+                ->orderByDesc('created_at')->limit(50)->get();
+        });
+        Route::get('notifications/unread-count', function (\Illuminate\Http\Request $req) {
+            return ['count' => \App\Models\AppNotification::where('user_id', $req->user()->id)
+                ->whereNull('read_at')->count()];
+        });
+        Route::post('notifications/{id}/read', function (\Illuminate\Http\Request $req, $id) {
+            \App\Models\AppNotification::where('user_id', $req->user()->id)->where('id', $id)
+                ->update(['read_at' => now()]);
+            return ['message' => 'ok'];
+        });
+        Route::post('notifications/read-all', function (\Illuminate\Http\Request $req) {
+            \App\Models\AppNotification::where('user_id', $req->user()->id)->whereNull('read_at')
+                ->update(['read_at' => now()]);
+            return ['message' => 'ok'];
         });
 
         // Profil akun — update nama

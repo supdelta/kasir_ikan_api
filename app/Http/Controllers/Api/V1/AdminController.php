@@ -16,6 +16,24 @@ class AdminController extends Controller
         abort_unless($request->user()->is_super_admin, 403, 'Khusus Super Admin.');
     }
 
+    public function stats(Request $request): JsonResponse
+    {
+        $this->ensureAdmin($request);
+        $now = now();
+
+        return response()->json([
+            'total_users' => User::count(),
+            'premium_users' => User::where('premium_until', '>', $now)->count(),
+            'free_users' => User::where(function ($q) use ($now) {
+                $q->whereNull('premium_until')->orWhere('premium_until', '<=', $now);
+            })->count(),
+            'expiring_soon' => User::whereBetween('premium_until', [$now, $now->copy()->addDays(7)])->count(),
+            'new_today' => User::whereDate('created_at', today())->count(),
+            'new_week' => User::where('created_at', '>=', $now->copy()->subDays(7))->count(),
+            'total_businesses' => \App\Models\Business::count(),
+        ]);
+    }
+
     public function users(Request $request): JsonResponse
     {
         $this->ensureAdmin($request);
