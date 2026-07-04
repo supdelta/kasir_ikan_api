@@ -15,11 +15,16 @@ class TransactionController extends Controller
 {
     public function index(Request $request, Business $business): JsonResponse
     {
-        $this->authorizeMember($business);
+        $member = $this->authorizeMember($business);
 
         $query = $business->transactions()
             ->with('product')
             ->orderByDesc('created_at');
+
+        // Staff hanya melihat transaksi yang dia input sendiri; owner lihat semua
+        if (!$member->isOwner()) {
+            $query->where('user_id', auth()->id());
+        }
 
         if ($request->has('date')) {
             $query->whereDate('created_at', $request->date);
