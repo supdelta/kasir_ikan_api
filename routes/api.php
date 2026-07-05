@@ -244,6 +244,7 @@ Route::prefix('v1')->group(function () {
         Route::prefix('businesses/{business}')->group(function () {
             Route::get('products', [ProductController::class, 'index']);
             Route::post('products', [ProductController::class, 'store']);
+            Route::post('products/import', [ProductController::class, 'import']);
             Route::put('products/{product}', [ProductController::class, 'update']);
             Route::delete('products/{product}', [ProductController::class, 'destroy']);
 
