@@ -12,7 +12,7 @@ class Receivable extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'business_id', 'transaction_id', 'customer_name',
+        'business_id', 'transaction_id', 'customer_name', 'customer_phone',
         'total', 'remaining', 'is_paid', 'note',
     ];
 

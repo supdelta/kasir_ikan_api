@@ -121,6 +121,7 @@ class TransactionController extends Controller
                 'total' => $total,
                 'payment_method' => $data['payment_method'] ?? null,
                 'customer_name' => $data['customer_name'] ?? null,
+                'customer_phone' => $data['customer_phone'] ?? null,
                 'note' => $data['note'] ?? null,
                 'local_uuid' => $data['local_uuid'] ?? \Str::uuid(),
                 'synced_at' => now(),
@@ -144,6 +145,7 @@ class TransactionController extends Controller
                     'business_id' => $business->id,
                     'transaction_id' => $tx->id,
                     'customer_name' => $tx->customer_name ?? 'Pelanggan',
+                    'customer_phone' => $tx->customer_phone ?? null,
                     'total' => $tx->total,
                     'remaining' => $tx->total,
                 ]);

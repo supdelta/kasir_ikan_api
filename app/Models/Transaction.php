@@ -14,7 +14,7 @@ class Transaction extends Model
     protected $fillable = [
         'business_id', 'user_id', 'type', 'product_id',
         'quantity_kg', 'unit_price', 'total', 'payment_method',
-        'customer_name', 'note', 'local_uuid', 'synced_at',
+        'customer_name', 'customer_phone', 'note', 'local_uuid', 'synced_at',
     ];
 
     protected $casts = [

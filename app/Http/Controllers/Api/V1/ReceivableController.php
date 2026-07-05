@@ -32,6 +32,7 @@ class ReceivableController extends Controller
 
         $data = $request->validate([
             'customer_name' => 'required|string|max:255',
+            'customer_phone' => 'nullable|string|max:20',
             'total' => 'required|integer|min:1',
             'note' => 'nullable|string',
         ]);
