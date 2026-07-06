@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Business;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -60,6 +61,48 @@ class ReportController extends Controller
             ],
             'breakdown' => $breakdown,
             'top_products' => $topProducts,
+        ]);
+    }
+
+    public function export(Request $request, Business $business): JsonResponse
+    {
+        $m = $this->authorizeMember($business);
+        abort_if(!$m->isOwner() && !$m->can_view_reports, 403, 'Kamu tidak punya akses laporan.');
+
+        $year  = (int) $request->get('year',  date('Y'));
+        $month = (int) $request->get('month', date('n'));
+
+        $from = Carbon::create($year, $month, 1)->startOfDay();
+        $to   = Carbon::create($year, $month, 1)->endOfMonth()->endOfDay();
+
+        $transactions = $business->transactions()
+            ->with('product')
+            ->whereBetween('created_at', [$from, $to])
+            ->orderBy('created_at')
+            ->get();
+
+        $products = $business->products()->orderBy('name')->get();
+
+        return response()->json([
+            'year'          => $year,
+            'month'         => $month,
+            'business_name' => $business->name,
+            'transactions'  => $transactions->map(fn($t) => [
+                'date'          => $t->created_at->format('d/m/Y'),
+                'type'          => $t->type,
+                'payment_method'=> $t->payment_method,
+                'customer_name' => $t->customer_name,
+                'product_name'  => $t->product?->name,
+                'quantity_kg'   => $t->quantity_kg,
+                'unit_price'    => $t->unit_price,
+                'total'         => $t->total,
+                'note'          => $t->note,
+            ]),
+            'products' => $products->map(fn($p) => [
+                'name'     => $p->name,
+                'stock_kg' => $p->stock_kg,
+                'category' => $p->category,
+            ]),
         ]);
     }
 }
