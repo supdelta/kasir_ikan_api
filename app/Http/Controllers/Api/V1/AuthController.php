@@ -199,10 +199,12 @@ class AuthController extends Controller
             );
 
             Mail::raw(
-                "Kode reset password Kasir Ikan kamu: {$code}\n\n"
+                "Kode reset password Delta Pos kamu: {$code}\n\n"
                     . "Kode berlaku 15 menit. Abaikan email ini jika kamu tidak meminta reset password.",
                 function ($m) use ($user) {
-                    $m->to($user->email)->subject('Kode Reset Password - Kasir Ikan');
+                    $m->to($user->email)
+                      ->from('pos@deltasoft.id', 'Delta Pos')
+                      ->subject('Kode Reset Password - Delta Pos');
                 }
             );
         }
