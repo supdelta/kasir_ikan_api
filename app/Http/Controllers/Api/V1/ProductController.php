@@ -22,6 +22,7 @@ class ProductController extends Controller
 
         $data = $request->validate([
             'name' => 'required|string|max:255',
+            'category' => 'nullable|string|max:100',
             'stock_kg' => 'required|numeric|min:0',
             'buy_price' => 'required|integer|min:0',
             'sell_price' => 'required|integer|min:0',
@@ -38,6 +39,7 @@ class ProductController extends Controller
 
         $data = $request->validate([
             'name' => 'sometimes|string|max:255',
+            'category' => 'nullable|string|max:100',
             'stock_kg' => 'sometimes|numeric|min:0',
             'buy_price' => 'sometimes|integer|min:0',
             'sell_price' => 'sometimes|integer|min:0',
@@ -54,6 +56,23 @@ class ProductController extends Controller
 
         $product->delete();
         return response()->json(['message' => 'Produk dihapus.']);
+    }
+
+    public function uploadPhoto(Request $request, Business $business, Product $product): JsonResponse
+    {
+        $this->authorizeMember($business);
+        $this->authorizeProduct($business, $product);
+
+        $request->validate(['photo' => 'required|image|max:4096']);
+
+        if ($product->photo) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($product->photo);
+        }
+
+        $path = $request->file('photo')->store('products', 'public');
+        $product->update(['photo' => $path]);
+
+        return response()->json(['photo_url' => asset('storage/' . $path)]);
     }
 
     public function import(Request $request, Business $business): JsonResponse

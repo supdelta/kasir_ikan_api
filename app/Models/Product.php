@@ -10,13 +10,20 @@ class Product extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['business_id', 'name', 'stock_kg', 'buy_price', 'sell_price'];
+    protected $fillable = ['business_id', 'name', 'category', 'stock_kg', 'buy_price', 'sell_price', 'photo'];
+
+    protected $appends = ['photo_url'];
 
     protected $casts = [
         'stock_kg' => 'decimal:3',
         'buy_price' => 'integer',
         'sell_price' => 'integer',
     ];
+
+    public function getPhotoUrlAttribute(): ?string
+    {
+        return $this->photo ? asset('storage/' . $this->photo) : null;
+    }
 
     public function business(): BelongsTo
     {

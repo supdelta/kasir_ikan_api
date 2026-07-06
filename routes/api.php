@@ -245,6 +245,7 @@ Route::prefix('v1')->group(function () {
             Route::get('products', [ProductController::class, 'index']);
             Route::post('products', [ProductController::class, 'store']);
             Route::post('products/import', [ProductController::class, 'import']);
+            Route::post('products/{product}/photo', [ProductController::class, 'uploadPhoto']);
             Route::put('products/{product}', [ProductController::class, 'update']);
             Route::delete('products/{product}', [ProductController::class, 'destroy']);
 
