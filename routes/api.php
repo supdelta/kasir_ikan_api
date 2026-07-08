@@ -256,6 +256,7 @@ Route::prefix('v1')->group(function () {
             Route::get('transactions', [TransactionController::class, 'index']);
             Route::post('transactions', [TransactionController::class, 'store']);
             Route::post('transactions/bulk-sync', [TransactionController::class, 'bulkSync']);
+            Route::put('transactions/{transaction}', [TransactionController::class, 'update']);
             Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy']);
 
             // Receivables

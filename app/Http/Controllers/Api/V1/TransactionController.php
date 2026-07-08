@@ -85,6 +85,55 @@ class TransactionController extends Controller
         return response()->json(['results' => $results]);
     }
 
+    public function update(Request $request, Business $business, Transaction $transaction): JsonResponse
+    {
+        $this->authorizeOwner($business);
+        abort_if($transaction->business_id !== $business->id, 403);
+
+        $data = $request->validate([
+            'quantity_kg'    => 'nullable|numeric|min:0.001',
+            'unit_price'     => 'nullable|integer|min:0',
+            'payment_method' => 'nullable|string|in:tunai,qris,utang,transfer',
+            'note'           => 'nullable|string',
+            'transaction_date' => 'nullable|date',
+            'customer_id'    => 'nullable|integer',
+            'supplier_id'    => 'nullable|integer',
+            'customer_name'  => 'nullable|string',
+            'customer_phone' => 'nullable|string',
+        ]);
+
+        DB::transaction(function () use ($transaction, $data) {
+            // Sesuaikan stok jika qty berubah
+            $newQty = isset($data['quantity_kg']) ? (float) $data['quantity_kg'] : null;
+            if ($newQty !== null && $transaction->product_id && $transaction->quantity_kg) {
+                $oldQty = (float) $transaction->quantity_kg;
+                $diff = $newQty - $oldQty;
+                if (abs($diff) > 0.0001) {
+                    $product = Product::find($transaction->product_id);
+                    if ($product) {
+                        if ($transaction->type === 'jual') {
+                            $product->decrement('stock_kg', $diff);
+                        } elseif ($transaction->type === 'beli') {
+                            $product->increment('stock_kg', $diff);
+                        }
+                    }
+                }
+            }
+
+            // Hitung ulang total
+            $qty   = $data['quantity_kg'] ?? $transaction->quantity_kg;
+            $price = $data['unit_price']  ?? $transaction->unit_price;
+            $total = $transaction->total;
+            if ($qty && $price) {
+                $total = (int) round((float) $qty * (int) $price);
+            }
+
+            $transaction->update(array_merge($data, ['total' => $total]));
+        });
+
+        return response()->json($transaction->fresh(['product']));
+    }
+
     public function destroy(Business $business, Transaction $transaction): JsonResponse
     {
         $this->authorizeOwner($business); // hapus = owner saja
