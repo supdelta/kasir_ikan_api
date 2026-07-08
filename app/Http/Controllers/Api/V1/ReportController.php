@@ -95,7 +95,7 @@ class ReportController extends Controller
             $totalJual = $txList->where('type', 'jual')->sum('total');
             $allTxIds = $business->transactions()
                 ->where('customer_id', $id)->pluck('id');
-            $piutangSisa = $business->receivables()
+            $piutangSisa = (int) $business->receivables()
                 ->where('remaining', '>', 0)
                 ->whereIn('transaction_id', $allTxIds)
                 ->sum('remaining');
@@ -116,7 +116,7 @@ class ReportController extends Controller
                 ->orderBy('created_at');
             $txList = $txQuery->get();
             $totalBeli = $txList->where('type', 'beli')->sum('total');
-            $hutangSisa = $business->payables()
+            $hutangSisa = (int) $business->payables()
                 ->where('remaining', '>', 0)
                 ->where('supplier_id', $id)
                 ->sum('remaining');
