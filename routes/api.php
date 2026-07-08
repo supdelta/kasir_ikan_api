@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ReceivableController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ScanController;
+use App\Http\Controllers\Api\V1\SupplierController;
 use App\Http\Controllers\Api\V1\TransactionController;
 use Illuminate\Support\Facades\Route;
 
@@ -260,6 +262,18 @@ Route::prefix('v1')->group(function () {
             Route::post('receivables', [ReceivableController::class, 'store']);
             Route::post('receivables/{receivable}/pay', [ReceivableController::class, 'pay']);
             Route::delete('receivables/{receivable}', [ReceivableController::class, 'destroy']);
+
+            // Customers
+            Route::get('customers', [CustomerController::class, 'index']);
+            Route::post('customers', [CustomerController::class, 'store']);
+            Route::put('customers/{customer}', [CustomerController::class, 'update']);
+            Route::delete('customers/{customer}', [CustomerController::class, 'destroy']);
+
+            // Suppliers
+            Route::get('suppliers', [SupplierController::class, 'index']);
+            Route::post('suppliers', [SupplierController::class, 'store']);
+            Route::put('suppliers/{supplier}', [SupplierController::class, 'update']);
+            Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy']);
 
             // Reports
             Route::get('reports/daily', [ReportController::class, 'daily']);

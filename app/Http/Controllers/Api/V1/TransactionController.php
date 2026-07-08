@@ -112,12 +112,22 @@ class TransactionController extends Controller
                 $total = (int) round((float) $data['quantity_kg'] * (int) $data['unit_price']);
             }
 
+            // Ambil buy_price produk sekarang untuk snapshot HPP
+            $buyPriceSnapshot = null;
+            if (($data['type'] === 'jual') && !empty($data['product_id'])) {
+                $p = Product::find($data['product_id']);
+                if ($p) {
+                    $buyPriceSnapshot = $p->buy_price;
+                }
+            }
+
             $tx = $business->transactions()->create([
                 'user_id' => auth()->id(),
                 'type' => $data['type'],
                 'product_id' => $data['product_id'] ?? null,
                 'quantity_kg' => $data['quantity_kg'] ?? null,
                 'unit_price' => $data['unit_price'] ?? null,
+                'buy_price_snapshot' => $buyPriceSnapshot,
                 'total' => $total,
                 'payment_method' => $data['payment_method'] ?? null,
                 'customer_name' => $data['customer_name'] ?? null,

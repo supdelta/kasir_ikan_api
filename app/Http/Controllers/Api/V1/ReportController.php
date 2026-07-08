@@ -40,6 +40,11 @@ class ReportController extends Controller
             ->values()
             ->take(5);
 
+        // HPP = harga beli × qty untuk setiap transaksi jual (cost of goods sold)
+        $hpp = $transactions->where('type', 'jual')
+            ->filter(fn($t) => $t->buy_price_snapshot && $t->quantity_kg)
+            ->sum(fn($t) => (int) round((float) $t->quantity_kg * $t->buy_price_snapshot));
+
         // Breakdown per metode bayar
         $breakdown = [
             'tunai' => $transactions->where('type', 'jual')->where('payment_method', 'tunai')->sum('total'),
@@ -47,6 +52,7 @@ class ReportController extends Controller
             'utang' => $transactions->where('type', 'jual')->where('payment_method', 'utang')->sum('total'),
             'pembelian_stok' => $transactions->where('type', 'beli')->sum('total'),
             'kas_keluar' => $transactions->where('type', 'kas_keluar')->sum('total'),
+            'hpp' => $hpp,
         ];
 
         return response()->json([
