@@ -121,10 +121,21 @@ class TransactionController extends Controller
                 }
             }
 
+            // Generate nomor transaksi: TRX-YYYYMMDD-XXXX (urut per business per hari)
+            $today = now()->format('Ymd');
+            $prefix = 'TRX-' . $today . '-';
+            $lastNum = $business->transactions()
+                ->where('transaction_number', 'like', $prefix . '%')
+                ->lockForUpdate()
+                ->count();
+            $transactionNumber = $prefix . str_pad($lastNum + 1, 4, '0', STR_PAD_LEFT);
+
             $tx = $business->transactions()->create([
                 'user_id' => auth()->id(),
                 'type' => $data['type'],
                 'product_id' => $data['product_id'] ?? null,
+                'customer_id' => $data['customer_id'] ?? null,
+                'supplier_id' => $data['supplier_id'] ?? null,
                 'quantity_kg' => $data['quantity_kg'] ?? null,
                 'unit_price' => $data['unit_price'] ?? null,
                 'buy_price_snapshot' => $buyPriceSnapshot,
@@ -135,6 +146,8 @@ class TransactionController extends Controller
                 'note' => $data['note'] ?? null,
                 'local_uuid' => $data['local_uuid'] ?? \Str::uuid(),
                 'synced_at' => now(),
+                'transaction_number' => $transactionNumber,
+                'transaction_date' => $data['transaction_date'] ?? now()->toDateString(),
             ]);
 
             // Update stok produk
