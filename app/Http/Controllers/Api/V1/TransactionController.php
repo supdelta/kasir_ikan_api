@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Business;
+use App\Models\Payable;
 use App\Models\Product;
 use App\Models\Receivable;
+use App\Models\Supplier;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -148,6 +150,7 @@ class TransactionController extends Controller
                 'synced_at' => now(),
                 'transaction_number' => $transactionNumber,
                 'transaction_date' => $data['transaction_date'] ?? now()->toDateString(),
+                'kasir_session_id' => $data['kasir_session_id'] ?? null,
             ]);
 
             // Update stok produk
@@ -162,7 +165,7 @@ class TransactionController extends Controller
                 }
             }
 
-            // Buat piutang otomatis jika jual-utang (§4.2 spec)
+            // Buat piutang otomatis jika jual-utang
             if ($tx->type === 'jual' && $tx->payment_method === 'utang') {
                 Receivable::create([
                     'business_id' => $business->id,
@@ -171,6 +174,26 @@ class TransactionController extends Controller
                     'customer_phone' => $tx->customer_phone ?? null,
                     'total' => $tx->total,
                     'remaining' => $tx->total,
+                ]);
+            }
+
+            // Buat hutang otomatis jika beli-utang
+            if ($tx->type === 'beli' && $tx->payment_method === 'utang') {
+                $supplierName = 'Supplier';
+                if ($tx->supplier_id) {
+                    $sup = Supplier::find($tx->supplier_id);
+                    $supplierName = $sup?->name ?? 'Supplier';
+                } elseif (!empty($data['supplier_name'])) {
+                    $supplierName = $data['supplier_name'];
+                }
+                Payable::create([
+                    'business_id' => $business->id,
+                    'transaction_id' => $tx->id,
+                    'supplier_id' => $tx->supplier_id,
+                    'supplier_name' => $supplierName,
+                    'total' => $tx->total,
+                    'remaining' => $tx->total,
+                    'note' => $tx->note,
                 ]);
             }
 

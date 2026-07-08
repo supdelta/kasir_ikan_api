@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Business;
+use App\Models\Customer;
+use App\Models\Supplier;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -67,6 +69,82 @@ class ReportController extends Controller
             ],
             'breakdown' => $breakdown,
             'top_products' => $topProducts,
+        ]);
+    }
+
+    public function contact(Request $request, Business $business): JsonResponse
+    {
+        $m = $this->authorizeMember($business);
+        abort_if(!$m->isOwner() && !$m->can_view_reports, 403, 'Kamu tidak punya akses laporan.');
+
+        $type = $request->get('type', 'customer'); // customer | supplier
+        $id   = (int) $request->get('id', 0);
+        $year  = (int) $request->get('year',  date('Y'));
+        $month = (int) $request->get('month', date('n'));
+
+        $from = Carbon::create($year, $month, 1)->startOfDay();
+        $to   = Carbon::create($year, $month, 1)->endOfMonth()->endOfDay();
+
+        if ($type === 'customer') {
+            $contact = Customer::where('business_id', $business->id)->findOrFail($id);
+            $txQuery = $business->transactions()->with('product')
+                ->where('customer_id', $id)
+                ->whereBetween('created_at', [$from, $to])
+                ->orderBy('created_at');
+            $txList = $txQuery->get();
+            $totalJual = $txList->where('type', 'jual')->sum('total');
+            $piutangSisa = $business->receivables()
+                ->where('remaining', '>', 0)
+                ->whereHas('transaction', fn($q) => $q->where('customer_id', $id))
+                ->sum('remaining');
+            $contactData = [
+                'id' => $contact->id,
+                'name' => $contact->name,
+                'phone' => $contact->phone,
+                'type' => 'customer',
+                'total_jual' => $totalJual,
+                'piutang_outstanding' => $piutangSisa,
+                'hutang_outstanding' => 0,
+            ];
+        } else {
+            $contact = Supplier::where('business_id', $business->id)->findOrFail($id);
+            $txQuery = $business->transactions()->with('product')
+                ->where('supplier_id', $id)
+                ->whereBetween('created_at', [$from, $to])
+                ->orderBy('created_at');
+            $txList = $txQuery->get();
+            $totalBeli = $txList->where('type', 'beli')->sum('total');
+            $hutangSisa = $business->payables()
+                ->where('remaining', '>', 0)
+                ->where('supplier_id', $id)
+                ->sum('remaining');
+            $contactData = [
+                'id' => $contact->id,
+                'name' => $contact->name,
+                'phone' => $contact->phone,
+                'type' => 'supplier',
+                'total_beli' => $totalBeli,
+                'piutang_outstanding' => 0,
+                'hutang_outstanding' => $hutangSisa,
+            ];
+        }
+
+        return response()->json([
+            'year' => $year,
+            'month' => $month,
+            'contact' => $contactData,
+            'transactions' => $txList->map(fn($t) => [
+                'id' => $t->id,
+                'date' => $t->created_at->format('d/m/Y'),
+                'transaction_number' => $t->transaction_number,
+                'type' => $t->type,
+                'payment_method' => $t->payment_method,
+                'product_name' => $t->product?->name,
+                'quantity_kg' => $t->quantity_kg,
+                'unit_price' => $t->unit_price,
+                'total' => $t->total,
+                'note' => $t->note,
+            ]),
         ]);
     }
 

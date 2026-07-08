@@ -58,6 +58,11 @@ class Business extends Model
         return $this->hasMany(Supplier::class);
     }
 
+    public function payables(): HasMany
+    {
+        return $this->hasMany(Payable::class);
+    }
+
     /** Keanggotaan user tertentu (null jika bukan anggota). */
     public function memberFor(int $userId): ?BusinessMember
     {

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Customer;
 use App\Models\Supplier;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Payable;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -18,7 +19,7 @@ class Transaction extends Model
         'customer_id', 'supplier_id',
         'quantity_kg', 'unit_price', 'buy_price_snapshot', 'total', 'payment_method',
         'customer_name', 'customer_phone', 'note', 'local_uuid', 'synced_at',
-        'transaction_date', 'transaction_number',
+        'transaction_date', 'transaction_number', 'kasir_session_id',
     ];
 
     protected $casts = [
@@ -48,6 +49,11 @@ class Transaction extends Model
     public function receivable(): HasOne
     {
         return $this->hasOne(Receivable::class);
+    }
+
+    public function payable(): HasOne
+    {
+        return $this->hasOne(Payable::class);
     }
 
     public function customer(): BelongsTo

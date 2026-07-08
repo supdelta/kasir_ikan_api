@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CustomerController;
+use App\Http\Controllers\Api\V1\PayableController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ReceivableController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -275,9 +276,15 @@ Route::prefix('v1')->group(function () {
             Route::put('suppliers/{supplier}', [SupplierController::class, 'update']);
             Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy']);
 
+            // Payables (hutang ke supplier)
+            Route::get('payables', [PayableController::class, 'index']);
+            Route::post('payables/{payable}/pay', [PayableController::class, 'pay']);
+            Route::delete('payables/{payable}', [PayableController::class, 'destroy']);
+
             // Reports
             Route::get('reports/daily', [ReportController::class, 'daily']);
             Route::get('reports/export', [ReportController::class, 'export']);
+            Route::get('reports/contact', [ReportController::class, 'contact']);
         });
     });
 });
