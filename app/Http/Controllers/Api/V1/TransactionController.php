@@ -52,6 +52,29 @@ class TransactionController extends Controller
             'transactions.*.total' => 'required|integer|min:0',
         ]);
 
+        // Pre-assign one transaction_number per kasir_session_id so all items
+        // in the same session share the same number without racing each other.
+        $sessionNumbers = [];
+        foreach ($request->transactions as $item) {
+            $sid = $item['kasir_session_id'] ?? null;
+            if ($sid && !isset($sessionNumbers[$sid])) {
+                $typePrefix = match($item['type']) {
+                    'jual'       => 'PJ',
+                    'beli'       => 'PB',
+                    'kas_masuk'  => 'KM',
+                    'kas_keluar' => 'KK',
+                    default      => 'TX',
+                };
+                $prefix = $typePrefix . now()->format('y');
+                $lastNum = $business->transactions()
+                    ->where('transaction_number', 'like', $prefix . '%')
+                    ->count();
+                // Account for numbers already reserved in this loop
+                $reserved = collect($sessionNumbers)->filter(fn($n) => str_starts_with($n, $prefix))->count();
+                $sessionNumbers[$sid] = $prefix . str_pad($lastNum + $reserved + 1, 5, '0', STR_PAD_LEFT);
+            }
+        }
+
         $results = [];
 
         foreach ($request->transactions as $item) {
@@ -65,6 +88,12 @@ class TransactionController extends Controller
                         'server_id' => $existing->id,
                     ];
                     continue;
+                }
+
+                // Inject pre-assigned number for this session
+                $sid = $item['kasir_session_id'] ?? null;
+                if ($sid && isset($sessionNumbers[$sid])) {
+                    $item['_preset_number'] = $sessionNumbers[$sid];
                 }
 
                 $tx = $this->createTransaction($item, $business);
@@ -173,22 +202,15 @@ class TransactionController extends Controller
             }
 
             // Generate nomor transaksi: {PREFIX}{YY}{NNNNN}
-            // Semua item dalam satu kasir_session_id berbagi nomor yang sama
-            $transactionNumber = null;
-            if (!empty($data['kasir_session_id'])) {
-                $sibling = $business->transactions()
-                    ->where('kasir_session_id', $data['kasir_session_id'])
-                    ->lockForUpdate()
-                    ->value('transaction_number');
-                $transactionNumber = $sibling;
-            }
-            if (!$transactionNumber) {
+            if (!empty($data['_preset_number'])) {
+                $transactionNumber = $data['_preset_number'];
+            } else {
                 $typePrefix = match($data['type']) {
-                    'jual'      => 'PJ',
-                    'beli'      => 'PB',
-                    'kas_masuk' => 'KM',
-                    'kas_keluar'=> 'KK',
-                    default     => 'TX',
+                    'jual'       => 'PJ',
+                    'beli'       => 'PB',
+                    'kas_masuk'  => 'KM',
+                    'kas_keluar' => 'KK',
+                    default      => 'TX',
                 };
                 $year = now()->format('y');
                 $prefix = $typePrefix . $year;
