@@ -21,7 +21,7 @@ class ReportController extends Controller
 
         $transactions = $business->transactions()
             ->with('product')
-            ->whereDate('created_at', $date)
+            ->whereDate('transaction_date', $date)
             ->get();
 
         $pemasukan = $transactions->whereIn('type', ['jual', 'kas_masuk'])->sum('total');

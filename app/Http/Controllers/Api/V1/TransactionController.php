@@ -29,7 +29,7 @@ class TransactionController extends Controller
         }
 
         if ($request->has('date')) {
-            $query->whereDate('created_at', $request->date);
+            $query->whereDate('transaction_date', $request->date);
         }
 
         return response()->json($query->paginate(50));
@@ -350,6 +350,30 @@ class TransactionController extends Controller
                     } catch (\Exception $e) {}
                 }
 
+                // Find or create customer/supplier by name
+                $customerId  = null;
+                $supplierId  = null;
+                if (!empty($row['customer'])) {
+                    $contactName = trim($row['customer']);
+                    if ($type === 'beli') {
+                        $supplier = $business->suppliers()
+                            ->whereRaw('LOWER(name) = ?', [strtolower($contactName)])
+                            ->first();
+                        if (!$supplier) {
+                            $supplier = $business->suppliers()->create(['name' => $contactName]);
+                        }
+                        $supplierId = $supplier->id;
+                    } else {
+                        $customer = $business->customers()
+                            ->whereRaw('LOWER(name) = ?', [strtolower($contactName)])
+                            ->first();
+                        if (!$customer) {
+                            $customer = $business->customers()->create(['name' => $contactName]);
+                        }
+                        $customerId = $customer->id;
+                    }
+                }
+
                 // Find or create product by name (case-insensitive)
                 $productId = null;
                 if (!empty($row['product'])) {
@@ -395,6 +419,8 @@ class TransactionController extends Controller
                 $data = [
                     'type'             => $type,
                     'product_id'       => $productId,
+                    'customer_id'      => $customerId,
+                    'supplier_id'      => $supplierId,
                     'quantity_kg'      => $qty,
                     'unit_price'       => $price,
                     'total'            => $total,
