@@ -173,20 +173,31 @@ class TransactionController extends Controller
             }
 
             // Generate nomor transaksi: {PREFIX}{YY}{NNNNN}
-            $typePrefix = match($data['type']) {
-                'jual'      => 'PJ',
-                'beli'      => 'PB',
-                'kas_masuk' => 'KM',
-                'kas_keluar'=> 'KK',
-                default     => 'TX',
-            };
-            $year = now()->format('y');
-            $prefix = $typePrefix . $year;
-            $lastNum = $business->transactions()
-                ->where('transaction_number', 'like', $prefix . '%')
-                ->lockForUpdate()
-                ->count();
-            $transactionNumber = $prefix . str_pad($lastNum + 1, 5, '0', STR_PAD_LEFT);
+            // Semua item dalam satu kasir_session_id berbagi nomor yang sama
+            $transactionNumber = null;
+            if (!empty($data['kasir_session_id'])) {
+                $sibling = $business->transactions()
+                    ->where('kasir_session_id', $data['kasir_session_id'])
+                    ->lockForUpdate()
+                    ->value('transaction_number');
+                $transactionNumber = $sibling;
+            }
+            if (!$transactionNumber) {
+                $typePrefix = match($data['type']) {
+                    'jual'      => 'PJ',
+                    'beli'      => 'PB',
+                    'kas_masuk' => 'KM',
+                    'kas_keluar'=> 'KK',
+                    default     => 'TX',
+                };
+                $year = now()->format('y');
+                $prefix = $typePrefix . $year;
+                $lastNum = $business->transactions()
+                    ->where('transaction_number', 'like', $prefix . '%')
+                    ->lockForUpdate()
+                    ->count();
+                $transactionNumber = $prefix . str_pad($lastNum + 1, 5, '0', STR_PAD_LEFT);
+            }
 
             $tx = $business->transactions()->create([
                 'user_id' => auth()->id(),
