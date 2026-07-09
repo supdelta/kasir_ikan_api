@@ -127,8 +127,12 @@ Route::prefix('v1')->group(function () {
         Route::patch('businesses/{business}', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
             $m = $business->memberFor(auth()->id());
             abort_if(!$m || !$m->isOwner(), 403, 'Hanya pemilik yang bisa mengubah usaha.');
-            $data = $req->validate(['name' => 'required|string|max:255', 'category' => 'nullable|string']);
-            $business->update($data);
+            $data = $req->validate([
+                'name' => 'nullable|string|max:255',
+                'category' => 'nullable|string',
+                'enforce_stock_limit' => 'nullable|boolean',
+            ]);
+            $business->update(array_filter($data, fn($v) => !is_null($v)));
             return $business;
         });
         // Upload logo usaha — owner saja
@@ -294,6 +298,43 @@ Route::prefix('v1')->group(function () {
             Route::get('payables', [PayableController::class, 'index']);
             Route::post('payables/{payable}/pay', [PayableController::class, 'pay']);
             Route::delete('payables/{payable}', [PayableController::class, 'destroy']);
+
+            // Chart of Accounts (master akun kas)
+            Route::get('accounts', function (\App\Models\Business $business) {
+                abort_if(!$business->memberFor(auth()->id()), 403);
+                return $business->accounts()->orderBy('code')->get();
+            });
+            Route::post('accounts', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
+                $m = $business->memberFor(auth()->id());
+                abort_if(!$m || !$m->isOwner(), 403);
+                $data = $req->validate([
+                    'code'     => 'required|string|max:20',
+                    'name'     => 'required|string|max:255',
+                    'group_id' => 'required|integer|between:1,8',
+                ]);
+                $data['business_id'] = $business->id;
+                $account = \App\Models\Account::create($data);
+                return response()->json($account, 201);
+            });
+            Route::put('accounts/{account}', function (\Illuminate\Http\Request $req, \App\Models\Business $business, \App\Models\Account $account) {
+                $m = $business->memberFor(auth()->id());
+                abort_if(!$m || !$m->isOwner(), 403);
+                abort_if($account->business_id !== $business->id, 403);
+                $data = $req->validate([
+                    'code'     => 'sometimes|string|max:20',
+                    'name'     => 'sometimes|string|max:255',
+                    'group_id' => 'sometimes|integer|between:1,8',
+                ]);
+                $account->update($data);
+                return $account->fresh();
+            });
+            Route::delete('accounts/{account}', function (\App\Models\Business $business, \App\Models\Account $account) {
+                $m = $business->memberFor(auth()->id());
+                abort_if(!$m || !$m->isOwner(), 403);
+                abort_if($account->business_id !== $business->id, 403);
+                $account->delete();
+                return response()->json(['message' => 'Akun dihapus.']);
+            });
 
             // Reports
             Route::get('reports/daily', [ReportController::class, 'daily']);

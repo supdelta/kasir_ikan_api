@@ -65,4 +65,9 @@ class Transaction extends Model
     {
         return $this->belongsTo(Supplier::class)->withTrashed();
     }
+
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
+    }
 }

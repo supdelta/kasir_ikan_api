@@ -20,7 +20,7 @@ class TransactionController extends Controller
         $member = $this->authorizeMember($business);
 
         $query = $business->transactions()
-            ->with('product')
+            ->with(['product', 'account'])
             ->orderByDesc('created_at');
 
         // Staff hanya melihat transaksi yang dia input sendiri; owner lihat semua
@@ -121,15 +121,17 @@ class TransactionController extends Controller
         abort_if($transaction->business_id !== $business->id, 403);
 
         $data = $request->validate([
-            'quantity_kg'    => 'nullable|numeric|min:0.001',
-            'unit_price'     => 'nullable|integer|min:0',
-            'payment_method' => 'nullable|string|in:tunai,qris,utang,transfer',
-            'note'           => 'nullable|string',
+            'quantity_kg'      => 'nullable|numeric|min:0.001',
+            'unit_price'       => 'nullable|integer|min:0',
+            'total'            => 'nullable|integer|min:0',
+            'payment_method'   => 'nullable|string|in:tunai,qris,utang,transfer',
+            'note'             => 'nullable|string',
             'transaction_date' => 'nullable|date',
-            'customer_id'    => 'nullable|integer',
-            'supplier_id'    => 'nullable|integer',
-            'customer_name'  => 'nullable|string',
-            'customer_phone' => 'nullable|string',
+            'customer_id'      => 'nullable|integer',
+            'supplier_id'      => 'nullable|integer',
+            'customer_name'    => 'nullable|string',
+            'customer_phone'   => 'nullable|string',
+            'account_id'       => 'nullable|integer',
         ]);
 
         DB::transaction(function () use ($transaction, $data) {
@@ -153,12 +155,15 @@ class TransactionController extends Controller
             // Hitung ulang total
             $qty   = $data['quantity_kg'] ?? $transaction->quantity_kg;
             $price = $data['unit_price']  ?? $transaction->unit_price;
-            $total = $transaction->total;
             if ($qty && $price) {
                 $total = (int) round((float) $qty * (int) $price);
+            } else {
+                $total = $data['total'] ?? $transaction->total;
             }
 
-            $transaction->update(array_merge($data, ['total' => $total]));
+            $updateData = $data;
+            unset($updateData['total']);
+            $transaction->update(array_merge($updateData, ['total' => $total]));
         });
 
         return response()->json($transaction->fresh(['product']));
@@ -234,6 +239,7 @@ class TransactionController extends Controller
                 'unit_price' => $data['unit_price'] ?? null,
                 'buy_price_snapshot' => $buyPriceSnapshot,
                 'total' => $total,
+                'account_id' => $data['account_id'] ?? null,
                 'payment_method' => $data['payment_method'] ?? null,
                 'customer_name' => $data['customer_name'] ?? null,
                 'customer_phone' => $data['customer_phone'] ?? null,
