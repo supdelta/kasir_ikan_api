@@ -117,10 +117,12 @@ Route::prefix('v1')->group(function () {
             $data = $req->validate(['name' => 'required|string', 'category' => 'nullable|string']);
             $business = auth()->user()->businesses()->create($data);
             $business->members()->create([
-                'user_id' => auth()->id(), 'role' => 'owner', 'can_view_reports' => true,
+                'user_id' => auth()->id(), 'role' => 'owner', 'can_view_reports' => true, 'can_view_piutang' => true, 'can_view_hutang' => true,
             ]);
             $business->setAttribute('role', 'owner');
             $business->setAttribute('can_view_reports', true);
+            $business->setAttribute('can_view_piutang', true);
+            $business->setAttribute('can_view_hutang', true);
             return $business;
         });
         // Update nama usaha — owner saja

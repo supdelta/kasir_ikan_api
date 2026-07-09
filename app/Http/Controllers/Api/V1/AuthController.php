@@ -42,7 +42,7 @@ class AuthController extends Controller
             'name' => $data['business_name'],
         ]);
         $business->members()->create([
-            'user_id' => $user->id, 'role' => 'owner', 'can_view_reports' => true,
+            'user_id' => $user->id, 'role' => 'owner', 'can_view_reports' => true, 'can_view_piutang' => true, 'can_view_hutang' => true,
         ]);
 
         $token = $user->createToken('mobile')->plainTextToken;
@@ -160,7 +160,7 @@ class AuthController extends Controller
         if (!$business) {
             $business = $user->businesses()->create(['name' => $p['name'] ?? 'Usaha Saya']);
             $business->members()->create([
-                'user_id' => $user->id, 'role' => 'owner', 'can_view_reports' => true,
+                'user_id' => $user->id, 'role' => 'owner', 'can_view_reports' => true, 'can_view_piutang' => true, 'can_view_hutang' => true,
             ]);
         }
 
