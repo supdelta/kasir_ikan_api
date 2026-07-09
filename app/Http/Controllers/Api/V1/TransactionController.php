@@ -350,13 +350,21 @@ class TransactionController extends Controller
                     } catch (\Exception $e) {}
                 }
 
-                // Find product by name (case-insensitive)
+                // Find or create product by name (case-insensitive)
                 $productId = null;
                 if (!empty($row['product'])) {
                     $product = $business->products()
                         ->whereRaw('LOWER(name) = ?', [strtolower(trim($row['product']))])
                         ->first();
-                    $productId = $product?->id;
+                    if (!$product) {
+                        $product = $business->products()->create([
+                            'name'      => trim($row['product']),
+                            'stock_kg'  => 0,
+                            'buy_price' => 0,
+                            'sell_price'=> 0,
+                        ]);
+                    }
+                    $productId = $product->id;
                 }
 
                 // Session grouping: same No on same date
