@@ -21,12 +21,15 @@ class ProductController extends Controller
         $this->authorizeMember($business);
 
         $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'category' => 'nullable|string|max:100',
-            'stock_kg' => 'required|numeric|min:0',
-            'buy_price' => 'required|integer|min:0',
-            'sell_price' => 'required|integer|min:0',
+            'name'      => 'required|string|max:255',
+            'category'  => 'nullable|string|max:100',
+            'stock_kg'  => 'nullable|numeric|min:0',
+            'buy_price' => 'nullable|integer|min:0',
+            'sell_price'=> 'nullable|integer|min:0',
         ]);
+        $data['stock_kg']   = $data['stock_kg']   ?? 0;
+        $data['buy_price']  = $data['buy_price']  ?? 0;
+        $data['sell_price'] = $data['sell_price'] ?? 0;
 
         $product = $business->products()->create($data);
         return response()->json($product, 201);
