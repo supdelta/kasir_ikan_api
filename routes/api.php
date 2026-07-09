@@ -34,6 +34,7 @@ Route::prefix('v1')->group(function () {
         Route::post('admin/users/{user}/premium', [AdminController::class, 'grantPremium']);
         Route::delete('admin/users/{user}/premium', [AdminController::class, 'revokePremium']);
         Route::delete('admin/users/{user}', [AdminController::class, 'deleteUser']);
+        Route::delete('admin/users/{user}/data', [AdminController::class, 'clearUserData']);
 
         // Status langganan
         Route::get('subscription', function (\Illuminate\Http\Request $req) {

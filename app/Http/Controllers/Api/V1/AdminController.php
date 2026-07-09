@@ -111,4 +111,26 @@ class AdminController extends Controller
 
         return response()->json(['message' => 'User dan semua datanya dihapus.']);
     }
+
+    public function clearUserData(Request $request, User $user): JsonResponse
+    {
+        $this->ensureAdmin($request);
+
+        if ($user->id === $request->user()->id) {
+            return response()->json(['message' => 'Tidak bisa hapus data akun sendiri.'], 422);
+        }
+
+        DB::transaction(function () use ($user) {
+            foreach ($user->businesses as $business) {
+                $business->transactions()->delete();
+                $business->receivables()->delete();
+                $business->payables()->delete();
+                $business->products()->delete();
+                $business->customers()->delete();
+                $business->suppliers()->delete();
+            }
+        });
+
+        return response()->json(['message' => 'Data transaksi & stok dihapus. Akun & usaha tetap ada.']);
+    }
 }
