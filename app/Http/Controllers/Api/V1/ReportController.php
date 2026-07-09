@@ -155,11 +155,23 @@ class ReportController extends Controller
         $m = $this->authorizeMember($business);
         abort_if(!$m->isOwner() && !$m->can_view_reports, 403, 'Kamu tidak punya akses laporan.');
 
-        $year  = (int) $request->get('year',  date('Y'));
-        $month = (int) $request->get('month', date('n'));
-
-        $from = Carbon::create($year, $month, 1)->startOfDay();
-        $to   = Carbon::create($year, $month, 1)->endOfMonth()->endOfDay();
+        if ($request->boolean('all')) {
+            $from = Carbon::create(2000, 1, 1)->startOfDay();
+            $to   = Carbon::now()->endOfDay();
+            $year = 0; $month = 0;
+            $periodLabel = 'Semua';
+        } elseif ($request->has('from_date') && $request->has('to_date')) {
+            $from = Carbon::parse($request->get('from_date'))->startOfDay();
+            $to   = Carbon::parse($request->get('to_date'))->endOfDay();
+            $year = 0; $month = 0;
+            $periodLabel = $from->format('d-m-Y') . ' sd ' . $to->format('d-m-Y');
+        } else {
+            $year  = (int) $request->get('year',  date('Y'));
+            $month = (int) $request->get('month', date('n'));
+            $from = Carbon::create($year, $month, 1)->startOfDay();
+            $to   = Carbon::create($year, $month, 1)->endOfMonth()->endOfDay();
+            $periodLabel = null;
+        }
 
         $transactions = $business->transactions()
             ->with('product')
@@ -172,6 +184,7 @@ class ReportController extends Controller
         return response()->json([
             'year'          => $year,
             'month'         => $month,
+            'period_label'  => $periodLabel,
             'business_name' => $business->name,
             'transactions'  => $transactions->map(fn($t) => [
                 'date'               => $t->created_at->format('d/m/Y'),
