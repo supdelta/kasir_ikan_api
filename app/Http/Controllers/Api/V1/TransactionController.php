@@ -172,7 +172,7 @@ class TransactionController extends Controller
                 }
             }
 
-            // Generate nomor transaksi: {PREFIX}{YYMMDD}{NNNNN}
+            // Generate nomor transaksi: {PREFIX}{YY}{NNNNN}
             $typePrefix = match($data['type']) {
                 'jual'      => 'PJ',
                 'beli'      => 'PB',
@@ -180,8 +180,8 @@ class TransactionController extends Controller
                 'kas_keluar'=> 'KK',
                 default     => 'TX',
             };
-            $today = now()->format('ymd');
-            $prefix = $typePrefix . $today;
+            $year = now()->format('y');
+            $prefix = $typePrefix . $year;
             $lastNum = $business->transactions()
                 ->where('transaction_number', 'like', $prefix . '%')
                 ->lockForUpdate()

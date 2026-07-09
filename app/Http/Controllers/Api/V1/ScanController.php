@@ -9,9 +9,6 @@ use Illuminate\Support\Facades\Http;
 
 class ScanController extends Controller
 {
-    /**
-     * Scan bon/struk pakai AI (Claude) — key disimpan di server, tidak di app.
-     */
     public function bon(Request $request): JsonResponse
     {
         if (!$request->user()->isPremium()) {
@@ -28,50 +25,59 @@ class ScanController extends Controller
             return response()->json(['message' => 'Fitur scan bon belum dikonfigurasi.'], 503);
         }
 
-        $file = $request->file('photo');
-        $base64 = base64_encode(file_get_contents($file->getRealPath()));
+        $file     = $request->file('photo');
+        $base64   = base64_encode(file_get_contents($file->getRealPath()));
         $mediaType = $file->getMimeType() === 'image/png' ? 'image/png' : 'image/jpeg';
 
         $prompt = <<<'TXT'
-Kamu adalah asisten kasir pasar ikan. Analisis foto bon/struk/nota ini dan ekstrak informasi transaksi.
+Kamu adalah asisten kasir pasar ikan. Analisis foto bon/struk/nota ini.
+Ekstrak SEMUA transaksi yang ada — bisa lebih dari satu jika ada beberapa item/baris.
 
-Kembalikan HANYA JSON (tanpa markdown, tanpa penjelasan) dalam format ini:
+Kembalikan HANYA JSON (tanpa markdown, tanpa penjelasan):
 {
-  "type": "jual" | "beli" | "kas_masuk" | "kas_keluar",
-  "total": angka_integer_rupiah,
-  "product_name": "nama produk jika ada, null jika tidak ada",
-  "note": "catatan singkat, null jika tidak ada"
+  "transactions": [
+    {
+      "type": "jual|beli|kas_masuk|kas_keluar",
+      "total": angka_integer_rupiah_atau_null,
+      "product_name": "nama produk atau null",
+      "quantity_kg": angka_desimal_atau_null,
+      "unit_price": angka_integer_per_kg_atau_null,
+      "customer_name": "nama pembeli atau supplier atau null",
+      "note": "catatan singkat atau null"
+    }
+  ]
 }
 
 Aturan tipe:
-- "jual"       = bon tagihan/invoice yang KITA buat untuk pelanggan kita (kita yang jual ikan)
-- "beli"       = bon pembelian STOK IKAN dari pemasok/nelayan (kita yang beli ikan untuk dijual kembali)
-- "kas_masuk"  = bukti penerimaan uang masuk (transfer masuk, setoran, dll)
-- "kas_keluar" = semua pengeluaran operasional: bon BBM/SPBU, listrik, air, gaji, belanja alat, makan, parkir, bensin, dll — APAPUN yang bukan pembelian stok ikan
+- "jual"        = tagihan/invoice ke pembeli (kita yang jual ikan)
+- "beli"        = bon pembelian stok ikan dari pemasok/nelayan
+- "kas_masuk"   = penerimaan uang masuk (transfer, setoran, dll)
+- "kas_keluar"  = pengeluaran operasional: SPBU/BBM, listrik, gaji, belanja alat, makan, dll
 
-Catatan penting:
-- Bon dari SPBU / pom bensin → "kas_keluar"
-- Bon dari minimarket / toko / resto / laundry → "kas_keluar"
-- Nota pembelian alat / perlengkapan → "kas_keluar"
-- Bon dari pemasok ikan / nelayan → "beli"
-- Total harus angka bulat dalam Rupiah (tanpa Rp, titik, koma)
-- Jika tidak ada bon yang jelas, kembalikan: {"type":"kas_keluar","total":null,"product_name":null,"note":"Tidak dapat membaca bon"}
+Aturan tambahan:
+- SPBU/pom bensin → "kas_keluar"
+- Minimarket/toko/resto/laundry → "kas_keluar"
+- Pemasok ikan/nelayan → "beli"
+- Nota tangan dengan beberapa baris/pelanggan → satu item per baris
+- total tiap item = quantity_kg × unit_price (hitung jika keduanya ada)
+- Semua angka rupiah tanpa titik/koma/Rp
+- Jika tidak terbaca: {"transactions":[{"type":"kas_keluar","total":null,"product_name":null,"quantity_kg":null,"unit_price":null,"customer_name":null,"note":"Tidak dapat membaca bon"}]}
 TXT;
 
         $resp = Http::withHeaders([
-            'x-api-key' => $apiKey,
+            'x-api-key'         => $apiKey,
             'anthropic-version' => '2023-06-01',
-            'content-type' => 'application/json',
-        ])->timeout(45)->post('https://api.anthropic.com/v1/messages', [
-            'model' => config('services.anthropic.model', 'claude-haiku-4-5-20251001'),
-            'max_tokens' => 256,
-            'messages' => [[
-                'role' => 'user',
+            'content-type'      => 'application/json',
+        ])->timeout(60)->post('https://api.anthropic.com/v1/messages', [
+            'model'      => config('services.anthropic.model', 'claude-haiku-4-5-20251001'),
+            'max_tokens' => 1024,
+            'messages'   => [[
+                'role'    => 'user',
                 'content' => [
                     ['type' => 'image', 'source' => [
-                        'type' => 'base64',
+                        'type'       => 'base64',
                         'media_type' => $mediaType,
-                        'data' => $base64,
+                        'data'       => $base64,
                     ]],
                     ['type' => 'text', 'text' => $prompt],
                 ],
@@ -82,19 +88,42 @@ TXT;
             return response()->json(['message' => 'Gagal memproses bon. Coba lagi.'], 502);
         }
 
-        $text = $resp->json('content.0.text', '');
+        $text    = $resp->json('content.0.text', '');
         $cleaned = trim(preg_replace('/```json?|```/', '', $text));
-        $data = json_decode($cleaned, true);
+        $data    = json_decode($cleaned, true);
 
-        if (!is_array($data)) {
-            $data = ['type' => 'kas_keluar', 'total' => null, 'product_name' => null, 'note' => 'Tidak dapat membaca bon'];
+        $validTypes  = ['jual', 'beli', 'kas_masuk', 'kas_keluar'];
+        $transactions = [];
+
+        if (is_array($data) && isset($data['transactions']) && is_array($data['transactions'])) {
+            foreach ($data['transactions'] as $item) {
+                $type = $item['type'] ?? 'kas_keluar';
+                if (!in_array($type, $validTypes)) $type = 'kas_keluar';
+
+                $transactions[] = [
+                    'type'          => $type,
+                    'total'         => isset($item['total']) && is_numeric($item['total']) ? (int) $item['total'] : null,
+                    'product_name'  => $item['product_name'] ?? null,
+                    'quantity_kg'   => isset($item['quantity_kg']) && is_numeric($item['quantity_kg']) ? (float) $item['quantity_kg'] : null,
+                    'unit_price'    => isset($item['unit_price']) && is_numeric($item['unit_price']) ? (int) $item['unit_price'] : null,
+                    'customer_name' => $item['customer_name'] ?? null,
+                    'note'          => $item['note'] ?? null,
+                ];
+            }
         }
 
-        return response()->json([
-            'type' => $data['type'] ?? 'kas_keluar',
-            'total' => isset($data['total']) ? (is_numeric($data['total']) ? (int) $data['total'] : null) : null,
-            'product_name' => $data['product_name'] ?? null,
-            'note' => $data['note'] ?? null,
-        ]);
+        if (empty($transactions)) {
+            $transactions = [[
+                'type'          => 'kas_keluar',
+                'total'         => null,
+                'product_name'  => null,
+                'quantity_kg'   => null,
+                'unit_price'    => null,
+                'customer_name' => null,
+                'note'          => 'Tidak dapat membaca bon',
+            ]];
+        }
+
+        return response()->json(['transactions' => $transactions]);
     }
 }
