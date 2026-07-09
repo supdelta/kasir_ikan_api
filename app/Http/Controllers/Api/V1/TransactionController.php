@@ -245,14 +245,20 @@ class TransactionController extends Controller
                 'kasir_session_id' => $data['kasir_session_id'] ?? null,
             ]);
 
-            // Update stok produk
+            // Update stok produk + update harga master jika belum diset (pertama kali)
             if ($tx->product_id && $tx->quantity_kg) {
                 $product = Product::find($tx->product_id);
                 if ($product) {
                     if ($tx->type === 'jual') {
                         $product->decrement('stock_kg', $tx->quantity_kg);
+                        if ($tx->unit_price && ($product->sell_price === 0 || $product->sell_price === null)) {
+                            $product->update(['sell_price' => $tx->unit_price]);
+                        }
                     } elseif ($tx->type === 'beli') {
                         $product->increment('stock_kg', $tx->quantity_kg);
+                        if ($tx->unit_price && ($product->buy_price === 0 || $product->buy_price === null)) {
+                            $product->update(['buy_price' => $tx->unit_price]);
+                        }
                     }
                 }
             }
