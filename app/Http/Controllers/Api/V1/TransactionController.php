@@ -66,10 +66,11 @@ class TransactionController extends Controller
                     default      => 'TX',
                 };
                 $prefix = $typePrefix . now()->format('y');
-                $lastNum = $business->transactions()
+                $lastTx = $business->transactions()
                     ->where('transaction_number', 'like', $prefix . '%')
-                    ->count();
-                // Account for numbers already reserved in this loop
+                    ->max('transaction_number');
+                $lastNum = $lastTx ? (int) substr($lastTx, strlen($prefix)) : 0;
+                // Account for numbers already reserved in this loop for the same prefix
                 $reserved = collect($sessionNumbers)->filter(fn($n) => str_starts_with($n, $prefix))->count();
                 $sessionNumbers[$sid] = $prefix . str_pad($lastNum + $reserved + 1, 5, '0', STR_PAD_LEFT);
             }
@@ -214,10 +215,12 @@ class TransactionController extends Controller
                 };
                 $year = now()->format('y');
                 $prefix = $typePrefix . $year;
-                $lastNum = $business->transactions()
+                // Pakai MAX number bukan COUNT agar nomor yang di-share tidak bikin gap
+                $lastTx = $business->transactions()
                     ->where('transaction_number', 'like', $prefix . '%')
                     ->lockForUpdate()
-                    ->count();
+                    ->max('transaction_number');
+                $lastNum = $lastTx ? (int) substr($lastTx, strlen($prefix)) : 0;
                 $transactionNumber = $prefix . str_pad($lastNum + 1, 5, '0', STR_PAD_LEFT);
             }
 
