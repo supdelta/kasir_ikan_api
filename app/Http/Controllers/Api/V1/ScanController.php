@@ -43,13 +43,19 @@ Kembalikan HANYA JSON (tanpa markdown, tanpa penjelasan) dalam format ini:
   "note": "catatan singkat, null jika tidak ada"
 }
 
-Aturan:
-- Jika bon adalah penjualan/tagihan ke pembeli -> type = "jual"
-- Jika bon adalah pembelian barang/stok -> type = "beli"
-- Jika bon adalah penerimaan uang tanpa produk -> type = "kas_masuk"
-- Jika bon adalah pengeluaran tanpa produk -> type = "kas_keluar"
+Aturan tipe:
+- "jual"       = bon tagihan/invoice yang KITA buat untuk pelanggan kita (kita yang jual ikan)
+- "beli"       = bon pembelian STOK IKAN dari pemasok/nelayan (kita yang beli ikan untuk dijual kembali)
+- "kas_masuk"  = bukti penerimaan uang masuk (transfer masuk, setoran, dll)
+- "kas_keluar" = semua pengeluaran operasional: bon BBM/SPBU, listrik, air, gaji, belanja alat, makan, parkir, bensin, dll — APAPUN yang bukan pembelian stok ikan
+
+Catatan penting:
+- Bon dari SPBU / pom bensin → "kas_keluar"
+- Bon dari minimarket / toko / resto / laundry → "kas_keluar"
+- Nota pembelian alat / perlengkapan → "kas_keluar"
+- Bon dari pemasok ikan / nelayan → "beli"
 - Total harus angka bulat dalam Rupiah (tanpa Rp, titik, koma)
-- Jika tidak ada bon yang jelas, kembalikan: {"type":"jual","total":null,"product_name":null,"note":"Tidak dapat membaca bon"}
+- Jika tidak ada bon yang jelas, kembalikan: {"type":"kas_keluar","total":null,"product_name":null,"note":"Tidak dapat membaca bon"}
 TXT;
 
         $resp = Http::withHeaders([
@@ -81,11 +87,11 @@ TXT;
         $data = json_decode($cleaned, true);
 
         if (!is_array($data)) {
-            $data = ['type' => 'jual', 'total' => null, 'product_name' => null, 'note' => 'Tidak dapat membaca bon'];
+            $data = ['type' => 'kas_keluar', 'total' => null, 'product_name' => null, 'note' => 'Tidak dapat membaca bon'];
         }
 
         return response()->json([
-            'type' => $data['type'] ?? 'jual',
+            'type' => $data['type'] ?? 'kas_keluar',
             'total' => isset($data['total']) ? (is_numeric($data['total']) ? (int) $data['total'] : null) : null,
             'product_name' => $data['product_name'] ?? null,
             'note' => $data['note'] ?? null,

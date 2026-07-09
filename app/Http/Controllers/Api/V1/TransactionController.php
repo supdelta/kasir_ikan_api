@@ -172,14 +172,21 @@ class TransactionController extends Controller
                 }
             }
 
-            // Generate nomor transaksi: TRX-YYMMDD-NNN (urut per business per hari)
+            // Generate nomor transaksi: {PREFIX}{YYMMDD}{NNNNN}
+            $typePrefix = match($data['type']) {
+                'jual'      => 'PJ',
+                'beli'      => 'PB',
+                'kas_masuk' => 'KM',
+                'kas_keluar'=> 'KK',
+                default     => 'TX',
+            };
             $today = now()->format('ymd');
-            $prefix = 'TRX-' . $today . '-';
+            $prefix = $typePrefix . $today;
             $lastNum = $business->transactions()
                 ->where('transaction_number', 'like', $prefix . '%')
                 ->lockForUpdate()
                 ->count();
-            $transactionNumber = $prefix . str_pad($lastNum + 1, 3, '0', STR_PAD_LEFT);
+            $transactionNumber = $prefix . str_pad($lastNum + 1, 5, '0', STR_PAD_LEFT);
 
             $tx = $business->transactions()->create([
                 'user_id' => auth()->id(),
