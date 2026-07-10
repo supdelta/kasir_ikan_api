@@ -79,18 +79,30 @@ class ReportController extends Controller
 
         $type = $request->get('type', 'customer'); // customer | supplier
         $id   = (int) $request->get('id', 0);
-        $year  = (int) $request->get('year',  date('Y'));
-        $month = (int) $request->get('month', date('n'));
+        $mode = $request->get('mode', 'monthly'); // monthly | daily | all
 
-        $from = Carbon::create($year, $month, 1)->startOfDay();
-        $to   = Carbon::create($year, $month, 1)->endOfMonth()->endOfDay();
+        if ($mode === 'all') {
+            $from  = Carbon::create(2000, 1, 1)->startOfDay();
+            $to    = Carbon::now()->endOfDay();
+            $year  = 0; $month = 0;
+        } elseif ($mode === 'daily') {
+            $date  = $request->get('date', today()->toDateString());
+            $from  = Carbon::parse($date)->startOfDay();
+            $to    = Carbon::parse($date)->endOfDay();
+            $year  = $from->year; $month = $from->month;
+        } else {
+            $year  = (int) $request->get('year',  date('Y'));
+            $month = (int) $request->get('month', date('n'));
+            $from  = Carbon::create($year, $month, 1)->startOfDay();
+            $to    = Carbon::create($year, $month, 1)->endOfMonth()->endOfDay();
+        }
 
         if ($type === 'customer') {
             $contact = Customer::where('business_id', $business->id)->findOrFail($id);
             $txQuery = $business->transactions()->with('product')
                 ->where('customer_id', $id)
-                ->whereBetween('created_at', [$from, $to])
-                ->orderBy('created_at');
+                ->whereBetween('transaction_date', [$from->toDateString(), $to->toDateString()])
+                ->orderBy('transaction_date');
             $txList = $txQuery->get();
             $totalJual = $txList->where('type', 'jual')->sum('total');
             $allTxIds = $business->transactions()
@@ -112,8 +124,8 @@ class ReportController extends Controller
             $contact = Supplier::where('business_id', $business->id)->findOrFail($id);
             $txQuery = $business->transactions()->with('product')
                 ->where('supplier_id', $id)
-                ->whereBetween('created_at', [$from, $to])
-                ->orderBy('created_at');
+                ->whereBetween('transaction_date', [$from->toDateString(), $to->toDateString()])
+                ->orderBy('transaction_date');
             $txList = $txQuery->get();
             $totalBeli = $txList->where('type', 'beli')->sum('total');
             $hutangSisa = (int) $business->payables()
@@ -134,10 +146,11 @@ class ReportController extends Controller
         return response()->json([
             'year' => $year,
             'month' => $month,
+            'mode' => $mode,
             'contact' => $contactData,
             'transactions' => $txList->map(fn($t) => [
                 'id' => $t->id,
-                'date' => $t->created_at->format('d/m/Y'),
+                'date' => ($t->transaction_date ?? $t->created_at)->format('d/m/Y'),
                 'transaction_number' => $t->transaction_number,
                 'type' => $t->type,
                 'payment_method' => $t->payment_method,
