@@ -105,7 +105,7 @@ class Business extends Model
             ['code' => 'MAKAN',      'name' => 'Biaya Makan & Minum',  'group_id' => 6],
             ['code' => 'BBM',        'name' => 'BBM',                  'group_id' => 6],
             ['code' => 'PARKIRTOL',  'name' => 'Parkir & Tol',         'group_id' => 6],
-            ['code' => 'BY OPS',     'name' => 'Biaya Operasional',    'group_id' => 6],
+            ['code' => 'BY OPS',     'name' => 'Biaya Operasional',    'group_id' => 5],
             ['code' => 'BUM',        'name' => 'Biaya Umum Lainnya',   'group_id' => 6],
         ];
 
