@@ -243,4 +243,58 @@ class AuthController extends Controller
 
         return response()->json(['message' => 'Password berhasil diubah. Silakan login.']);
     }
+
+    // Super admin: generate kode reset untuk user tertentu
+    public function adminGenerateResetCode(Request $request, int $userId): JsonResponse
+    {
+        $admin = $request->user();
+        if (!$admin || !$admin->is_super_admin) {
+            return response()->json(['message' => 'Akses ditolak.'], 403);
+        }
+
+        $user = User::findOrFail($userId);
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        $user->update([
+            'reset_code' => $code,
+            'reset_code_expires_at' => now()->addHours(24),
+        ]);
+
+        return response()->json([
+            'code' => $code,
+            'user_name' => $user->name,
+            'expires_at' => now()->addHours(24)->toDateTimeString(),
+        ]);
+    }
+
+    // User: reset password pakai kode dari admin
+    public function resetPasswordWithCode(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'phone' => 'required|string',
+            'code' => 'required|string|size:6',
+            'password' => 'required|string|min:6',
+        ]);
+
+        $user = User::where('phone', $data['phone'])->first();
+        if (!$user) {
+            throw ValidationException::withMessages(['phone' => ['Nomor HP tidak ditemukan.']]);
+        }
+
+        if ($user->reset_code !== $data['code']) {
+            throw ValidationException::withMessages(['code' => ['Kode salah.']]);
+        }
+
+        if (!$user->reset_code_expires_at || now()->isAfter($user->reset_code_expires_at)) {
+            throw ValidationException::withMessages(['code' => ['Kode sudah kadaluarsa.']]);
+        }
+
+        $user->update([
+            'password' => Hash::make($data['password']),
+            'reset_code' => null,
+            'reset_code_expires_at' => null,
+        ]);
+
+        return response()->json(['message' => 'Password berhasil diubah. Silakan login.']);
+    }
 }

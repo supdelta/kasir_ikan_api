@@ -19,6 +19,7 @@ Route::prefix('v1')->group(function () {
     Route::post('auth/login', [AuthController::class, 'login']);
     Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('auth/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('auth/reset-password-code', [AuthController::class, 'resetPasswordWithCode']);
     Route::post('auth/google', [AuthController::class, 'google']);
 
     // Protected
@@ -35,6 +36,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('admin/users/{user}/premium', [AdminController::class, 'revokePremium']);
         Route::delete('admin/users/{user}', [AdminController::class, 'deleteUser']);
         Route::delete('admin/users/{user}/data', [AdminController::class, 'clearUserData']);
+        Route::post('admin/users/{user}/reset-code', [AuthController::class, 'adminGenerateResetCode']);
 
         // Status langganan
         Route::get('subscription', function (\Illuminate\Http\Request $req) {
