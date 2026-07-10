@@ -257,7 +257,7 @@ class AuthController extends Controller
 
         $user->update([
             'reset_code' => $code,
-            'reset_code_expires_at' => now()->addHours(24),
+            'reset_code_expires_at' => now()->addMinutes(15),
         ]);
 
         return response()->json([
