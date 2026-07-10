@@ -67,7 +67,7 @@ class TransactionController extends Controller
                 };
                 $prefix = $typePrefix . now()->format('y');
                 $lastTx = $business->transactions()
-                    ->where('transaction_number', 'like', $prefix . '%')
+                    ->where('transaction_number', 'like', $prefix . '_____')
                     ->max('transaction_number');
                 $lastNum = $lastTx ? (int) substr($lastTx, strlen($prefix)) : 0;
                 // Account for numbers already reserved in this loop for the same prefix
@@ -243,9 +243,9 @@ class TransactionController extends Controller
                 };
                 $year = now()->format('y');
                 $prefix = $typePrefix . $year;
-                // Pakai MAX number bukan COUNT agar nomor yang di-share tidak bikin gap
+                // Filter format baru saja (5 digit suffix) agar tidak terkena data lama
                 $lastTx = $business->transactions()
-                    ->where('transaction_number', 'like', $prefix . '%')
+                    ->where('transaction_number', 'like', $prefix . '_____')
                     ->lockForUpdate()
                     ->max('transaction_number');
                 $lastNum = $lastTx ? (int) substr($lastTx, strlen($prefix)) : 0;
