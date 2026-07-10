@@ -82,14 +82,31 @@ class Business extends Model
         if ($this->accounts()->exists()) return;
 
         $defaults = [
-            ['code' => '1-001', 'name' => 'Kas Tunai',          'group_id' => 1],
-            ['code' => '1-002', 'name' => 'Kas Bank',           'group_id' => 1],
-            ['code' => '4-001', 'name' => 'Penjualan Ikan',     'group_id' => 4],
-            ['code' => '6-001', 'name' => 'Gaji Karyawan',      'group_id' => 6],
-            ['code' => '6-002', 'name' => 'Biaya Listrik',      'group_id' => 6],
-            ['code' => '6-003', 'name' => 'Biaya Transport',    'group_id' => 6],
-            ['code' => '6-004', 'name' => 'Biaya Sewa',         'group_id' => 6],
-            ['code' => '6-005', 'name' => 'Biaya Operasional',  'group_id' => 6],
+            // Kelompok 1 - Aset
+            ['code' => 'KAS TUNAI',  'name' => 'Kas Tunai',           'group_id' => 1],
+            ['code' => 'KASBON',     'name' => 'Kasbon',               'group_id' => 1],
+            ['code' => 'PIUTANG',    'name' => 'Piutang Customer',     'group_id' => 1],
+            // Kelompok 2 - Hutang
+            ['code' => 'HUTANG',     'name' => 'Hutang Supplier',      'group_id' => 2],
+            ['code' => 'HUTL',       'name' => 'Hutang Lainnya',       'group_id' => 2],
+            // Kelompok 3 - Modal
+            ['code' => 'MODAL',      'name' => 'Modal Usaha',          'group_id' => 3],
+            // Kelompok 4 - Pendapatan
+            ['code' => 'PENJUALAN',  'name' => 'Penjualan',            'group_id' => 4],
+            // Kelompok 5 - HPP
+            ['code' => 'HPP',        'name' => 'HPP',                  'group_id' => 5],
+            // Kelompok 6 - Biaya Umum
+            ['code' => 'GAJI',       'name' => 'Gaji Karyawan',        'group_id' => 6],
+            ['code' => 'LISTRIK',    'name' => 'Biaya Listrik',        'group_id' => 6],
+            ['code' => 'PULSA',      'name' => 'Pulsa',                'group_id' => 6],
+            ['code' => 'TRANSPORT',  'name' => 'Biaya Transport',      'group_id' => 6],
+            ['code' => 'SEWA',       'name' => 'Biaya Sewa',           'group_id' => 6],
+            ['code' => 'ATK',        'name' => 'Biaya ATK',            'group_id' => 6],
+            ['code' => 'MAKAN',      'name' => 'Biaya Makan & Minum',  'group_id' => 6],
+            ['code' => 'BBM',        'name' => 'BBM',                  'group_id' => 6],
+            ['code' => 'PARKIRTOL',  'name' => 'Parkir & Tol',         'group_id' => 6],
+            ['code' => 'BY OPS',     'name' => 'Biaya Operasional',    'group_id' => 6],
+            ['code' => 'BUM',        'name' => 'Biaya Umum Lainnya',   'group_id' => 6],
         ];
 
         foreach ($defaults as $acc) {
