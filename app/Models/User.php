@@ -23,6 +23,8 @@ class User extends Authenticatable
         'avatar',
         'premium_until',
         'is_super_admin',
+        'reset_code',
+        'reset_code_expires_at',
     ];
 
     public function businesses(): HasMany
