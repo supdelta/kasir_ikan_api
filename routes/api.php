@@ -307,7 +307,7 @@ Route::prefix('v1')->group(function () {
             // Chart of Accounts (master akun kas)
             Route::get('accounts', function (\App\Models\Business $business) {
                 abort_if(!$business->memberFor(auth()->id()), 403);
-                return $business->accounts()->orderBy('code')->get();
+                return $business->accounts()->orderBy('group_id')->orderBy('code')->get();
             });
             Route::post('accounts', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
                 $m = $business->memberFor(auth()->id());
