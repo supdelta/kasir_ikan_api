@@ -44,6 +44,7 @@ class AuthController extends Controller
         $business->members()->create([
             'user_id' => $user->id, 'role' => 'owner', 'can_view_reports' => true, 'can_view_piutang' => true, 'can_view_hutang' => true,
         ]);
+        $business->seedDefaultAccounts();
 
         $token = $user->createToken('mobile')->plainTextToken;
 
@@ -162,6 +163,7 @@ class AuthController extends Controller
             $business->members()->create([
                 'user_id' => $user->id, 'role' => 'owner', 'can_view_reports' => true, 'can_view_piutang' => true, 'can_view_hutang' => true,
             ]);
+            $business->seedDefaultAccounts();
         }
 
         $token = $user->createToken('mobile')->plainTextToken;
