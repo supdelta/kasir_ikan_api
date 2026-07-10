@@ -132,22 +132,45 @@ class TransactionController extends Controller
             'customer_name'    => 'nullable|string',
             'customer_phone'   => 'nullable|string',
             'account_id'       => 'nullable|integer',
+            'product_id'       => 'nullable|integer',
         ]);
 
         DB::transaction(function () use ($transaction, $data) {
-            // Sesuaikan stok jika qty berubah
+            $oldProductId = $transaction->product_id;
+            $newProductId = array_key_exists('product_id', $data) ? $data['product_id'] : $oldProductId;
+            $productChanged = $newProductId !== null && $newProductId !== $oldProductId;
             $newQty = isset($data['quantity_kg']) ? (float) $data['quantity_kg'] : null;
-            if ($newQty !== null && $transaction->product_id && $transaction->quantity_kg) {
-                $oldQty = (float) $transaction->quantity_kg;
-                $diff = $newQty - $oldQty;
+            $currentQty = (float) ($transaction->quantity_kg ?? 0);
+
+            if ($productChanged) {
+                // Restore old product stock
+                if ($oldProductId && $currentQty > 0) {
+                    $old = Product::find($oldProductId);
+                    if ($old) {
+                        $transaction->type === 'jual'
+                            ? $old->increment('stock_kg', $currentQty)
+                            : $old->decrement('stock_kg', $currentQty);
+                    }
+                }
+                // Apply qty to new product
+                $applyQty = $newQty ?? $currentQty;
+                if ($applyQty > 0) {
+                    $new = Product::find($newProductId);
+                    if ($new) {
+                        $transaction->type === 'jual'
+                            ? $new->decrement('stock_kg', $applyQty)
+                            : $new->increment('stock_kg', $applyQty);
+                    }
+                }
+            } elseif ($newQty !== null && $oldProductId && $currentQty > 0) {
+                // Same product, qty changed
+                $diff = $newQty - $currentQty;
                 if (abs($diff) > 0.0001) {
-                    $product = Product::find($transaction->product_id);
+                    $product = Product::find($oldProductId);
                     if ($product) {
-                        if ($transaction->type === 'jual') {
-                            $product->decrement('stock_kg', $diff);
-                        } elseif ($transaction->type === 'beli') {
-                            $product->increment('stock_kg', $diff);
-                        }
+                        $transaction->type === 'jual'
+                            ? $product->decrement('stock_kg', $diff)
+                            : $product->increment('stock_kg', $diff);
                     }
                 }
             }

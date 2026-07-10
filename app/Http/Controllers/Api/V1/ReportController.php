@@ -163,6 +163,79 @@ class ReportController extends Controller
         ]);
     }
 
+    public function contactsSummary(Request $request, Business $business): JsonResponse
+    {
+        $m = $this->authorizeMember($business);
+        abort_if(!$m->isOwner() && !$m->can_view_reports, 403, 'Kamu tidak punya akses laporan.');
+
+        $type  = $request->get('type', 'customer'); // customer | supplier
+        $mode  = $request->get('mode', 'monthly');  // monthly | all
+        $year  = (int) $request->get('year',  date('Y'));
+        $month = (int) $request->get('month', date('n'));
+
+        if ($mode === 'all') {
+            $from = '2000-01-01';
+            $to   = now()->toDateString();
+        } else {
+            $from = Carbon::create($year, $month, 1)->toDateString();
+            $to   = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+        }
+
+        if ($type === 'customer') {
+            $contacts = Customer::where('business_id', $business->id)->get();
+            $result = $contacts->map(function ($c) use ($business, $from, $to) {
+                $row = $business->transactions()
+                    ->where('customer_id', $c->id)
+                    ->where('type', 'jual')
+                    ->whereBetween('transaction_date', [$from, $to])
+                    ->selectRaw('COALESCE(SUM(total),0) as total_sum, COUNT(*) as cnt')
+                    ->first();
+                $piutang = (int) $business->receivables()
+                    ->where('remaining', '>', 0)
+                    ->whereHas('transaction', fn ($q) => $q->where('customer_id', $c->id))
+                    ->sum('remaining');
+                return [
+                    'id'                  => $c->id,
+                    'name'                => $c->name,
+                    'phone'               => $c->phone ?? '',
+                    'total'               => (int) ($row->total_sum ?? 0),
+                    'count'               => (int) ($row->cnt ?? 0),
+                    'piutang_outstanding' => $piutang,
+                ];
+            })->sortByDesc('total')->values();
+        } else {
+            $contacts = Supplier::where('business_id', $business->id)->get();
+            $result = $contacts->map(function ($c) use ($business, $from, $to) {
+                $row = $business->transactions()
+                    ->where('supplier_id', $c->id)
+                    ->where('type', 'beli')
+                    ->whereBetween('transaction_date', [$from, $to])
+                    ->selectRaw('COALESCE(SUM(total),0) as total_sum, COUNT(*) as cnt')
+                    ->first();
+                $hutang = (int) $business->payables()
+                    ->where('remaining', '>', 0)
+                    ->where('supplier_id', $c->id)
+                    ->sum('remaining');
+                return [
+                    'id'                 => $c->id,
+                    'name'               => $c->name,
+                    'phone'              => $c->phone ?? '',
+                    'total'              => (int) ($row->total_sum ?? 0),
+                    'count'              => (int) ($row->cnt ?? 0),
+                    'hutang_outstanding' => $hutang,
+                ];
+            })->sortByDesc('total')->values();
+        }
+
+        return response()->json([
+            'year'     => $year,
+            'month'    => $month,
+            'mode'     => $mode,
+            'type'     => $type,
+            'contacts' => $result,
+        ]);
+    }
+
     public function export(Request $request, Business $business): JsonResponse
     {
         $m = $this->authorizeMember($business);

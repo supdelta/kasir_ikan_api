@@ -343,6 +343,7 @@ Route::prefix('v1')->group(function () {
             Route::get('reports/daily', [ReportController::class, 'daily']);
             Route::get('reports/export', [ReportController::class, 'export']);
             Route::get('reports/contact', [ReportController::class, 'contact']);
+            Route::get('reports/contacts-summary', [ReportController::class, 'contactsSummary']);
         });
     });
 });
