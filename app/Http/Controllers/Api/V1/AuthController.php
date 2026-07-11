@@ -31,10 +31,11 @@ class AuthController extends Controller
         }
 
         $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'] ?? null,
-            'phone' => $data['phone'] ?? null,
-            'password' => Hash::make($data['password']),
+            'name'         => $data['name'],
+            'email'        => $data['email'] ?? null,
+            'phone'        => $data['phone'] ?? null,
+            'password'     => Hash::make($data['password']),
+            'password_set' => true,
         ]);
 
         $business = Business::create([
@@ -59,6 +60,7 @@ class AuthController extends Controller
                 'is_premium' => $user->isPremium(),
                 'premium_until' => $user->premium_until,
                 'is_super_admin' => (bool) $user->is_super_admin,
+                'has_password'   => (bool) $user->password_set,
             ],
             'business' => [
                 'id' => $business->id,
@@ -100,6 +102,7 @@ class AuthController extends Controller
                 'is_premium' => $user->isPremium(),
                 'premium_until' => $user->premium_until,
                 'is_super_admin' => (bool) $user->is_super_admin,
+                'has_password'   => (bool) $user->password_set,
             ],
             'business' => $business ? [
                 'id' => $business->id,
@@ -146,8 +149,9 @@ class AuthController extends Controller
         $user = User::firstOrCreate(
             ['email' => $email],
             [
-                'name' => $p['name'] ?? explode('@', $email)[0],
-                'password' => Hash::make(Str::random(40)),
+                'name'         => $p['name'] ?? explode('@', $email)[0],
+                'password'     => Hash::make(Str::random(40)),
+                'password_set' => false,
             ]
         );
 
@@ -179,6 +183,7 @@ class AuthController extends Controller
                 'is_premium' => $user->isPremium(),
                 'premium_until' => $user->premium_until,
                 'is_super_admin' => (bool) $user->is_super_admin,
+                'has_password'   => (bool) $user->password_set,
             ],
             'business' => [
                 'id' => $business->id,
@@ -186,6 +191,36 @@ class AuthController extends Controller
                 'logo_url' => $business->logo ? asset('storage/' . $business->logo) : null,
             ],
         ]);
+    }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'current_password' => 'nullable|string',
+            'password'         => 'required|string|min:6|confirmed',
+        ]);
+
+        // Kalau sudah punya password sendiri, wajib verifikasi password lama
+        if ($user->password_set && !empty($data['current_password'])) {
+            if (!Hash::check($data['current_password'], $user->password)) {
+                throw ValidationException::withMessages([
+                    'current_password' => ['Password lama salah.'],
+                ]);
+            }
+        } elseif ($user->password_set && empty($data['current_password'])) {
+            throw ValidationException::withMessages([
+                'current_password' => ['Masukkan password lama kamu.'],
+            ]);
+        }
+
+        $user->update([
+            'password'     => Hash::make($data['password']),
+            'password_set' => true,
+        ]);
+
+        return response()->json(['message' => 'Password berhasil diubah.']);
     }
 
     public function forgotPassword(Request $request): JsonResponse

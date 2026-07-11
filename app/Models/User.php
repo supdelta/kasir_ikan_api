@@ -20,6 +20,7 @@ class User extends Authenticatable
         'email',
         'phone',
         'password',
+        'password_set',
         'avatar',
         'premium_until',
         'is_super_admin',
@@ -67,10 +68,11 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'premium_until' => 'datetime',
-            'is_super_admin' => 'boolean',
-            'password' => 'hashed',
+            'email_verified_at'  => 'datetime',
+            'premium_until'      => 'datetime',
+            'is_super_admin'     => 'boolean',
+            'password_set'       => 'boolean',
+            'password'           => 'hashed',
         ];
     }
 }
