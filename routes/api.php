@@ -104,6 +104,7 @@ Route::prefix('v1')->group(function () {
                     $b->setAttribute('can_view_reports', (bool) ($m?->can_view_reports ?? false));
                     $b->setAttribute('can_view_piutang', (bool) ($m?->can_view_piutang ?? false));
                     $b->setAttribute('can_view_hutang', (bool) ($m?->can_view_hutang ?? false));
+                    $b->setAttribute('can_view_transactions', (bool) ($m?->can_view_transactions ?? false));
                     return $b;
                 });
         });
@@ -195,9 +196,10 @@ Route::prefix('v1')->group(function () {
                     'name' => $mem->user->name,
                     'email' => $mem->user->email,
                     'role' => $mem->role,
-                    'can_view_reports' => (bool) $mem->can_view_reports,
-                    'can_view_piutang' => (bool) $mem->can_view_piutang,
-                    'can_view_hutang'  => (bool) $mem->can_view_hutang,
+                    'can_view_reports'       => (bool) $mem->can_view_reports,
+                    'can_view_piutang'       => (bool) $mem->can_view_piutang,
+                    'can_view_hutang'        => (bool) $mem->can_view_hutang,
+                    'can_view_transactions'  => (bool) $mem->can_view_transactions,
                     'avatar_url' => $mem->user->avatar_url,
                 ]);
         });
@@ -214,9 +216,10 @@ Route::prefix('v1')->group(function () {
                 'email' => 'required|email',
                 'name' => 'nullable|string|max:255',
                 'password' => 'nullable|string|min:6',
-                'can_view_reports'  => 'boolean',
-                'can_view_piutang'  => 'boolean',
-                'can_view_hutang'   => 'boolean',
+                'can_view_reports'        => 'boolean',
+                'can_view_piutang'        => 'boolean',
+                'can_view_hutang'         => 'boolean',
+                'can_view_transactions'   => 'boolean',
             ]);
             $user = \App\Models\User::where('email', $data['email'])->first();
             if (!$user) {
@@ -239,9 +242,10 @@ Route::prefix('v1')->group(function () {
             $business->members()->create([
                 'user_id'          => $user->id,
                 'role'             => 'staff',
-                'can_view_reports' => $data['can_view_reports'] ?? false,
-                'can_view_piutang' => $data['can_view_piutang'] ?? false,
-                'can_view_hutang'  => $data['can_view_hutang']  ?? false,
+                'can_view_reports'       => $data['can_view_reports']       ?? false,
+                'can_view_piutang'       => $data['can_view_piutang']       ?? false,
+                'can_view_hutang'        => $data['can_view_hutang']        ?? false,
+                'can_view_transactions'  => $data['can_view_transactions']  ?? false,
             ]);
             return response()->json(['message' => 'Staff ditambahkan.'], 201);
         });
@@ -250,9 +254,10 @@ Route::prefix('v1')->group(function () {
             abort_if(!$m || !$m->isOwner(), 403, 'Hanya pemilik yang bisa kelola karyawan.');
             $mem = $business->members()->where('user_id', $userId)->where('role', 'staff')->firstOrFail();
             $data = $req->validate([
-                'can_view_reports' => 'boolean',
-                'can_view_piutang' => 'boolean',
-                'can_view_hutang'  => 'boolean',
+                'can_view_reports'       => 'boolean',
+                'can_view_piutang'       => 'boolean',
+                'can_view_hutang'        => 'boolean',
+                'can_view_transactions'  => 'boolean',
             ]);
             $mem->update($data);
             return response()->json(['message' => 'Akses staff diperbarui.']);

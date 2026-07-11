@@ -23,8 +23,8 @@ class TransactionController extends Controller
             ->with(['product', 'account'])
             ->orderByDesc('created_at');
 
-        // Staff hanya melihat transaksi yang dia input sendiri; owner lihat semua
-        if (!$member->isOwner()) {
+        // Staff hanya lihat transaksinya sendiri, kecuali punya izin can_view_transactions
+        if (!$member->isOwner() && !$member->can_view_transactions) {
             $query->where('user_id', auth()->id());
         }
 
