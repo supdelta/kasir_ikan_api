@@ -61,6 +61,36 @@ class AdminController extends Controller
         );
     }
 
+    /// Masuk ke akun user manapun (impersonate) — khusus developer/super admin.
+    /// Mengembalikan token & data user seperti login biasa.
+    public function impersonate(Request $request, User $user): JsonResponse
+    {
+        $this->ensureAdmin($request);
+
+        $token = $user->createToken('impersonate')->plainTextToken;
+        $business = \App\Models\Business::whereHas('members', fn($q) => $q->where('user_id', $user->id))->first();
+
+        return response()->json([
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'avatar_url' => $user->avatar_url,
+                'is_premium' => $user->isPremium(),
+                'premium_until' => $user->premium_until,
+                'is_super_admin' => (bool) $user->is_super_admin,
+                'has_password' => (bool) $user->password_set,
+            ],
+            'business' => $business ? [
+                'id' => $business->id,
+                'name' => $business->name,
+                'logo_url' => $business->logo ? asset('storage/' . $business->logo) : null,
+            ] : null,
+        ]);
+    }
+
     public function grantPremium(Request $request, User $user): JsonResponse
     {
         $this->ensureAdmin($request);
