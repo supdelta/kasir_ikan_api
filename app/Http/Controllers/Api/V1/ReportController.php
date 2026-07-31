@@ -261,7 +261,9 @@ class ReportController extends Controller
 
         $transactions = $business->transactions()
             ->with('product')
-            ->whereBetween('created_at', [$from, $to])
+            ->whereRaw('COALESCE(transaction_date, DATE(created_at)) BETWEEN ? AND ?',
+                [$from->toDateString(), $to->toDateString()])
+            ->orderByRaw('COALESCE(transaction_date, DATE(created_at))')
             ->orderBy('created_at')
             ->get();
 
@@ -273,7 +275,7 @@ class ReportController extends Controller
             'period_label'  => $periodLabel,
             'business_name' => $business->name,
             'transactions'  => $transactions->map(fn($t) => [
-                'date'               => $t->created_at->format('d/m/Y'),
+                'date'               => ($t->transaction_date ?? $t->created_at)->format('d/m/Y'),
                 'transaction_number' => $t->transaction_number,
                 'type'               => $t->type,
                 'payment_method'     => $t->payment_method,
