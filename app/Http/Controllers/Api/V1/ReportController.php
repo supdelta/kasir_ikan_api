@@ -19,10 +19,19 @@ class ReportController extends Controller
 
         $date = $request->get('date', today()->toDateString());
 
-        $transactions = $business->transactions()
-            ->with('product')
-            ->whereDate('transaction_date', $date)
-            ->get();
+        $query = $business->transactions()->with('product');
+
+        if ($request->boolean('all')) {
+            // Semua data — tanpa filter periode.
+        } elseif ($request->filled('from_date') && $request->filled('to_date')) {
+            $from = Carbon::parse($request->get('from_date'))->toDateString();
+            $to   = Carbon::parse($request->get('to_date'))->toDateString();
+            $query->whereRaw('COALESCE(transaction_date, DATE(created_at)) BETWEEN ? AND ?', [$from, $to]);
+        } else {
+            $query->whereDate('transaction_date', $date);
+        }
+
+        $transactions = $query->get();
 
         $pemasukan = $transactions->whereIn('type', ['jual', 'kas_masuk'])->sum('total');
         $pengeluaran = $transactions->whereIn('type', ['beli', 'kas_keluar'])->sum('total');
