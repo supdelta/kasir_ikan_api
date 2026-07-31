@@ -91,6 +91,36 @@ class AdminController extends Controller
         ]);
     }
 
+    /// Kirim pengumuman (notifikasi in-app) ke semua user sekaligus.
+    public function broadcast(Request $request): JsonResponse
+    {
+        $this->ensureAdmin($request);
+        $data = $request->validate([
+            'title' => 'required|string|max:120',
+            'body'  => 'required|string|max:500',
+        ]);
+
+        $now = now();
+        $rows = User::pluck('id')->map(fn($id) => [
+            'user_id'    => $id,
+            'type'       => 'broadcast',
+            'title'      => $data['title'],
+            'body'       => $data['body'],
+            'read_at'    => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->all();
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            \App\Models\AppNotification::insert($chunk);
+        }
+
+        return response()->json([
+            'message' => 'Pengumuman terkirim ke ' . count($rows) . ' user.',
+            'count'   => count($rows),
+        ]);
+    }
+
     public function grantPremium(Request $request, User $user): JsonResponse
     {
         $this->ensureAdmin($request);

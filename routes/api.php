@@ -38,6 +38,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('admin/users/{user}/data', [AdminController::class, 'clearUserData']);
         Route::post('admin/users/{user}/reset-code', [AuthController::class, 'adminGenerateResetCode']);
         Route::post('admin/users/{user}/impersonate', [AdminController::class, 'impersonate']);
+        Route::post('admin/broadcast', [AdminController::class, 'broadcast']);
 
         Route::post('auth/change-password', [AuthController::class, 'changePassword']);
 
