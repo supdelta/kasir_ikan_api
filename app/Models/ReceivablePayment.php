@@ -10,7 +10,7 @@ class ReceivablePayment extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['receivable_id', 'amount', 'paid_at'];
+    protected $fillable = ['receivable_id', 'amount', 'method', 'paid_at'];
 
     protected $casts = [
         'amount' => 'integer',

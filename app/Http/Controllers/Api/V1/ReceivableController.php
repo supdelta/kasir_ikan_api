@@ -52,11 +52,13 @@ class ReceivableController extends Controller
 
         $data = $request->validate([
             'amount' => 'required|integer|min:1|max:' . $receivable->remaining,
+            'method' => 'nullable|in:tunai,transfer',
         ]);
 
         DB::transaction(function () use ($receivable, $data) {
             $receivable->payments()->create([
                 'amount' => $data['amount'],
+                'method' => $data['method'] ?? 'tunai',
                 'paid_at' => now(),
             ]);
 

@@ -35,12 +35,14 @@ class PayableController extends Controller
 
         $data = $request->validate([
             'amount' => 'required|integer|min:1|max:' . $payable->remaining,
+            'method' => 'nullable|in:tunai,transfer',
             'note' => 'nullable|string',
         ]);
 
         DB::transaction(function () use ($payable, $data) {
             $payable->payments()->create([
                 'amount' => $data['amount'],
+                'method' => $data['method'] ?? 'tunai',
                 'note' => $data['note'] ?? null,
             ]);
 

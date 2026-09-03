@@ -33,6 +33,38 @@ class ReportController extends Controller
 
         $transactions = $query->get();
 
+        // Rentang tanggal untuk pembayaran piutang/hutang (cicilan yang masuk/keluar pada periode)
+        if ($request->boolean('all')) {
+            $payFrom = Carbon::create(2000, 1, 1)->startOfDay();
+            $payTo   = Carbon::now()->endOfDay();
+        } elseif ($request->filled('from_date') && $request->filled('to_date')) {
+            $payFrom = Carbon::parse($request->get('from_date'))->startOfDay();
+            $payTo   = Carbon::parse($request->get('to_date'))->endOfDay();
+        } else {
+            $payFrom = Carbon::parse($date)->startOfDay();
+            $payTo   = Carbon::parse($date)->endOfDay();
+        }
+
+        // Pembayaran piutang (uang masuk dari penagihan) per metode
+        $piutangBayar = \App\Models\ReceivablePayment::whereHas(
+                'receivable',
+                fn ($q) => $q->where('business_id', $business->id)
+            )
+            ->whereBetween('paid_at', [$payFrom, $payTo])
+            ->selectRaw("COALESCE(method, 'tunai') as method, SUM(amount) as total")
+            ->groupBy('method')
+            ->pluck('total', 'method');
+
+        // Pembayaran hutang (uang keluar untuk supplier) per metode
+        $hutangBayar = \App\Models\PayablePayment::whereHas(
+                'payable',
+                fn ($q) => $q->where('business_id', $business->id)
+            )
+            ->whereBetween('created_at', [$payFrom, $payTo])
+            ->selectRaw("COALESCE(method, 'tunai') as method, SUM(amount) as total")
+            ->groupBy('method')
+            ->pluck('total', 'method');
+
         $pemasukan = $transactions->whereIn('type', ['jual', 'kas_masuk'])->sum('total');
         $pengeluaran = $transactions->whereIn('type', ['beli', 'kas_keluar'])->sum('total');
         $penjualan = $transactions->where('type', 'jual')->sum('total');
@@ -64,6 +96,12 @@ class ReportController extends Controller
             'pembelian_stok' => $transactions->where('type', 'beli')->sum('total'),
             'kas_keluar' => $transactions->where('type', 'kas_keluar')->sum('total'),
             'hpp' => $hpp,
+            // Pembayaran piutang (uang masuk dari penagihan) per metode
+            'piutang_bayar_tunai' => (int) ($piutangBayar['tunai'] ?? 0),
+            'piutang_bayar_transfer' => (int) ($piutangBayar['transfer'] ?? 0),
+            // Pembayaran hutang (uang keluar ke supplier) per metode
+            'hutang_bayar_tunai' => (int) ($hutangBayar['tunai'] ?? 0),
+            'hutang_bayar_transfer' => (int) ($hutangBayar['transfer'] ?? 0),
         ];
 
         return response()->json([
