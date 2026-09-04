@@ -27,4 +27,15 @@ abstract class Controller
         $m = $this->membership($business);
         abort_if(!$m || !$m->isOwner(), 403, 'Hanya pemilik usaha yang bisa melakukan ini.');
     }
+
+    /**
+     * Izinkan owner ATAU staff yang punya izin tertentu (mis. can_edit_transactions).
+     * Owner selalu lolos; staff hanya lolos kalau kolom izinnya bernilai true.
+     */
+    protected function authorizeCan(Business $business, string $permission, string $message = 'Kamu tidak punya izin untuk aksi ini.'): void
+    {
+        $m = $this->membership($business);
+        abort_if(!$m, 403, 'Akses ditolak.');
+        abort_if(!$m->isOwner() && !$m->{$permission}, 403, $message);
+    }
 }

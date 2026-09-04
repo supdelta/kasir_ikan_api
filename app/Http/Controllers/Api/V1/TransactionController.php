@@ -117,7 +117,7 @@ class TransactionController extends Controller
 
     public function update(Request $request, Business $business, Transaction $transaction): JsonResponse
     {
-        $this->authorizeOwner($business);
+        $this->authorizeCan($business, 'can_edit_transactions', 'Kamu tidak punya izin untuk mengedit transaksi.');
         abort_if($transaction->business_id !== $business->id, 403);
 
         $data = $request->validate([
@@ -194,7 +194,7 @@ class TransactionController extends Controller
 
     public function destroy(Business $business, Transaction $transaction): JsonResponse
     {
-        $this->authorizeOwner($business); // hapus = owner saja
+        $this->authorizeCan($business, 'can_delete_records', 'Kamu tidak punya izin untuk menghapus transaksi.');
         abort_if($transaction->business_id !== $business->id, 403);
 
         // Tidak boleh hapus transaksi yang piutangnya sudah ada cicilan

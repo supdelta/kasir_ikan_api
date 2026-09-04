@@ -109,6 +109,8 @@ Route::prefix('v1')->group(function () {
                     $b->setAttribute('can_view_piutang', (bool) ($m?->can_view_piutang ?? false));
                     $b->setAttribute('can_view_hutang', (bool) ($m?->can_view_hutang ?? false));
                     $b->setAttribute('can_view_transactions', (bool) ($m?->can_view_transactions ?? false));
+                    $b->setAttribute('can_edit_transactions', (bool) ($m?->can_edit_transactions ?? false));
+                    $b->setAttribute('can_delete_records', (bool) ($m?->can_delete_records ?? false));
                     return $b;
                 });
         });
@@ -204,6 +206,8 @@ Route::prefix('v1')->group(function () {
                     'can_view_piutang'       => (bool) $mem->can_view_piutang,
                     'can_view_hutang'        => (bool) $mem->can_view_hutang,
                     'can_view_transactions'  => (bool) $mem->can_view_transactions,
+                    'can_edit_transactions'  => (bool) $mem->can_edit_transactions,
+                    'can_delete_records'     => (bool) $mem->can_delete_records,
                     'avatar_url' => $mem->user->avatar_url,
                 ]);
         });
@@ -224,6 +228,8 @@ Route::prefix('v1')->group(function () {
                 'can_view_piutang'        => 'boolean',
                 'can_view_hutang'         => 'boolean',
                 'can_view_transactions'   => 'boolean',
+                'can_edit_transactions'   => 'boolean',
+                'can_delete_records'      => 'boolean',
             ]);
             $user = \App\Models\User::where('email', $data['email'])->first();
             if (!$user) {
@@ -250,6 +256,8 @@ Route::prefix('v1')->group(function () {
                 'can_view_piutang'       => $data['can_view_piutang']       ?? false,
                 'can_view_hutang'        => $data['can_view_hutang']        ?? false,
                 'can_view_transactions'  => $data['can_view_transactions']  ?? false,
+                'can_edit_transactions'  => $data['can_edit_transactions']  ?? false,
+                'can_delete_records'     => $data['can_delete_records']     ?? false,
             ]);
             return response()->json(['message' => 'Staff ditambahkan.'], 201);
         });
@@ -262,6 +270,8 @@ Route::prefix('v1')->group(function () {
                 'can_view_piutang'       => 'boolean',
                 'can_view_hutang'        => 'boolean',
                 'can_view_transactions'  => 'boolean',
+                'can_edit_transactions'  => 'boolean',
+                'can_delete_records'     => 'boolean',
             ]);
             $mem->update($data);
             return response()->json(['message' => 'Akses staff diperbarui.']);

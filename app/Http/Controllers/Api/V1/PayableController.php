@@ -58,7 +58,7 @@ class PayableController extends Controller
 
     public function destroy(Business $business, Payable $payable): JsonResponse
     {
-        $this->authorizeOwner($business);
+        $this->authorizeCan($business, 'can_delete_records', 'Kamu tidak punya izin untuk menghapus hutang.');
         abort_if($payable->business_id !== $business->id, 403);
 
         if ($payable->payments()->exists()) {

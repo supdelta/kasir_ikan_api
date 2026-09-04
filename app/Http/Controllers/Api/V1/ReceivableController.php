@@ -74,7 +74,7 @@ class ReceivableController extends Controller
 
     public function destroy(Business $business, Receivable $receivable): JsonResponse
     {
-        $this->authorizeOwner($business); // hapus = owner saja
+        $this->authorizeCan($business, 'can_delete_records', 'Kamu tidak punya izin untuk menghapus piutang.');
         abort_if($receivable->business_id !== $business->id, 403);
 
         if ($receivable->payments()->exists()) {
