@@ -187,9 +187,82 @@ class TransactionController extends Controller
             $updateData = $data;
             unset($updateData['total']);
             $transaction->update(array_merge($updateData, ['total' => $total]));
+
+            // Samakan piutang/hutang terkait dengan nilai transaksi terbaru
+            // (jaga jumlah yang sudah dibayar agar cicilan tidak hilang).
+            $this->syncDebtFromTransaction($transaction);
         });
 
         return response()->json($transaction->fresh(['product']));
+    }
+
+    /**
+     * Sinkronkan piutang (jual-utang) / hutang (beli-utang) dengan kondisi
+     * transaksi terbaru setelah diedit. Sisa dihitung ulang = total baru
+     * dikurangi jumlah yang SUDAH dibayar, sehingga cicilan tetap terjaga.
+     */
+    private function syncDebtFromTransaction(Transaction $tx): void
+    {
+        $isUtang = $tx->payment_method === 'utang';
+
+        if ($tx->type === 'jual') {
+            $rec = $tx->receivable()->first();
+            if ($isUtang) {
+                if ($rec) {
+                    $paid = max(0, (int) $rec->total - (int) $rec->remaining);
+                    $newRemaining = max(0, (int) $tx->total - $paid);
+                    $rec->update([
+                        'customer_name'  => $tx->customer_name ?? $rec->customer_name,
+                        'customer_phone' => $tx->customer_phone ?? $rec->customer_phone,
+                        'total'          => (int) $tx->total,
+                        'remaining'      => $newRemaining,
+                        'is_paid'        => $newRemaining <= 0,
+                    ]);
+                } else {
+                    Receivable::create([
+                        'business_id'    => $tx->business_id,
+                        'transaction_id' => $tx->id,
+                        'customer_name'  => $tx->customer_name ?? 'Pelanggan',
+                        'customer_phone' => $tx->customer_phone,
+                        'total'          => (int) $tx->total,
+                        'remaining'      => (int) $tx->total,
+                    ]);
+                }
+            } elseif ($rec && !$rec->payments()->exists()) {
+                $rec->delete(); // bukan utang lagi & belum dicicil
+            }
+        }
+
+        if ($tx->type === 'beli') {
+            $pay = $tx->payable()->first();
+            if ($isUtang) {
+                if ($pay) {
+                    $paid = max(0, (int) $pay->total - (int) $pay->remaining);
+                    $newRemaining = max(0, (int) $tx->total - $paid);
+                    $pay->update([
+                        'supplier_id' => $tx->supplier_id ?? $pay->supplier_id,
+                        'total'       => (int) $tx->total,
+                        'remaining'   => $newRemaining,
+                    ]);
+                } else {
+                    $supplierName = 'Supplier';
+                    if ($tx->supplier_id) {
+                        $supplierName = Supplier::find($tx->supplier_id)?->name ?? 'Supplier';
+                    }
+                    Payable::create([
+                        'business_id'    => $tx->business_id,
+                        'transaction_id' => $tx->id,
+                        'supplier_id'    => $tx->supplier_id,
+                        'supplier_name'  => $supplierName,
+                        'total'          => (int) $tx->total,
+                        'remaining'      => (int) $tx->total,
+                        'note'           => $tx->note,
+                    ]);
+                }
+            } elseif ($pay && !$pay->payments()->exists()) {
+                $pay->delete(); // bukan utang lagi & belum dicicil
+            }
+        }
     }
 
     public function destroy(Business $business, Transaction $transaction): JsonResponse
