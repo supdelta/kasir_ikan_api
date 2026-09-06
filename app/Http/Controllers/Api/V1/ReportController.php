@@ -338,6 +338,26 @@ class ReportController extends Controller
                 'stock_kg' => $p->stock_kg,
                 'category' => $p->category,
             ]),
+            // Snapshot piutang/hutang saat ini (kotor & sisa) — dikelompokkan per nama.
+            // Dipakai laporan export agar konsisten dengan layar Piutang/Hutang (bukan total kotor transaksi).
+            'receivables' => $business->receivables()
+                ->selectRaw('customer_name, SUM(total) as total_kotor, SUM(remaining) as sisa')
+                ->groupBy('customer_name')
+                ->get()
+                ->map(fn($r) => [
+                    'customer_name' => $r->customer_name,
+                    'total'         => (int) $r->total_kotor,
+                    'remaining'     => (int) $r->sisa,
+                ]),
+            'payables' => $business->payables()
+                ->selectRaw('supplier_name, SUM(total) as total_kotor, SUM(remaining) as sisa')
+                ->groupBy('supplier_name')
+                ->get()
+                ->map(fn($p) => [
+                    'supplier_name' => $p->supplier_name,
+                    'total'         => (int) $p->total_kotor,
+                    'remaining'     => (int) $p->sisa,
+                ]),
         ]);
     }
 }
