@@ -111,6 +111,9 @@ Route::prefix('v1')->group(function () {
                     $b->setAttribute('can_view_transactions', (bool) ($m?->can_view_transactions ?? false));
                     $b->setAttribute('can_edit_transactions', (bool) ($m?->can_edit_transactions ?? false));
                     $b->setAttribute('can_delete_records', (bool) ($m?->can_delete_records ?? false));
+                    $b->setAttribute('opening_cash_tunai', (int) $b->opening_cash_tunai);
+                    $b->setAttribute('opening_cash_bank', (int) $b->opening_cash_bank);
+                    $b->setAttribute('opening_cash_date', $b->opening_cash_date?->toDateString());
                     return $b;
                 });
         });
@@ -142,6 +145,9 @@ Route::prefix('v1')->group(function () {
                 'name' => 'nullable|string|max:255',
                 'category' => 'nullable|string',
                 'enforce_stock_limit' => 'nullable|boolean',
+                'opening_cash_tunai' => 'nullable|integer|min:0',
+                'opening_cash_bank' => 'nullable|integer|min:0',
+                'opening_cash_date' => 'nullable|date',
             ]);
             $business->update(array_filter($data, fn($v) => !is_null($v)));
             return $business;

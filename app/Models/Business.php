@@ -9,9 +9,15 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Business extends Model
 {
-    protected $fillable = ['user_id', 'name', 'category', 'logo', 'enforce_stock_limit'];
+    protected $fillable = ['user_id', 'name', 'category', 'logo', 'enforce_stock_limit',
+        'opening_cash_tunai', 'opening_cash_bank', 'opening_cash_date'];
 
-    protected $casts = ['enforce_stock_limit' => 'boolean'];
+    protected $casts = [
+        'enforce_stock_limit' => 'boolean',
+        'opening_cash_tunai' => 'integer',
+        'opening_cash_bank' => 'integer',
+        'opening_cash_date' => 'date',
+    ];
 
     protected $appends = ['logo_url'];
 
