@@ -429,6 +429,8 @@ class ReportController extends Controller
                     'total'         => (int) $p->total_kotor,
                     'remaining'     => (int) $p->sisa,
                 ]),
+            // Saldo kas berjalan (saldo awal + gerakan) untuk ditampilkan di RINGKASAN Excel
+            'saldo_kas' => $this->cashBalances($business),
         ]);
     }
 }
