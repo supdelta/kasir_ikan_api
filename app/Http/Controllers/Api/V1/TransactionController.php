@@ -48,7 +48,7 @@ class TransactionController extends Controller
         $request->validate([
             'transactions' => 'required|array',
             'transactions.*.local_uuid' => 'required|uuid',
-            'transactions.*.type' => 'required|in:jual,beli,kas_masuk,kas_keluar',
+            'transactions.*.type' => 'required|in:jual,beli,kas_masuk,kas_keluar,mutasi',
             'transactions.*.total' => 'required|integer|min:0',
         ]);
 
@@ -312,6 +312,7 @@ class TransactionController extends Controller
                     'beli'       => 'PB',
                     'kas_masuk'  => 'KM',
                     'kas_keluar' => 'KK',
+                    'mutasi'     => 'PK',
                     default      => 'TX',
                 };
                 $year = now()->format('y');
@@ -337,6 +338,8 @@ class TransactionController extends Controller
                 'total' => $total,
                 'account_id' => $data['account_id'] ?? null,
                 'payment_method' => $data['payment_method'] ?? null,
+                'cash_from' => $data['cash_from'] ?? null,
+                'cash_to' => $data['cash_to'] ?? null,
                 'customer_name' => $data['customer_name'] ?? null,
                 'customer_phone' => $data['customer_phone'] ?? null,
                 'note' => $data['note'] ?? null,

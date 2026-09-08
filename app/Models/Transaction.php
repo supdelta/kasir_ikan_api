@@ -18,6 +18,7 @@ class Transaction extends Model
         'business_id', 'user_id', 'type', 'product_id',
         'customer_id', 'supplier_id',
         'quantity_kg', 'unit_price', 'buy_price_snapshot', 'total', 'payment_method',
+        'cash_from', 'cash_to',
         'customer_name', 'customer_phone', 'note', 'local_uuid', 'synced_at',
         'transaction_date', 'transaction_number', 'kasir_session_id',
     ];

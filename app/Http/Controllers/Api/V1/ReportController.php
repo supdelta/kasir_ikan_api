@@ -104,6 +104,8 @@ class ReportController extends Controller
             'hutang_bayar_transfer' => (int) ($hutangBayar['transfer'] ?? 0),
         ];
 
+        $saldoKas = $this->cashBalances($business);
+
         return response()->json([
             'date' => $date,
             'summary' => [
@@ -113,10 +115,63 @@ class ReportController extends Controller
                 'penjualan' => $penjualan,
                 'piutang_baru' => $piutangBaru,
                 'jumlah_transaksi' => $transactions->count(),
+                // Saldo kas berjalan (all-time, sampai sekarang) — bukan per periode.
+                'saldo_kas_tunai' => $saldoKas['tunai'],
+                'saldo_kas_bank'  => $saldoKas['bank'],
+                'saldo_kas_total' => $saldoKas['tunai'] + $saldoKas['bank'],
             ],
             'breakdown' => $breakdown,
             'top_products' => $topProducts,
         ]);
+    }
+
+    /**
+     * Saldo kas berjalan (all-time) dipisah Tunai vs Bank, dihitung dari metode bayar.
+     * Klasifikasi: tunai/null -> Kas Tunai; transfer/qris -> Kas Bank; utang -> belum ada arus kas.
+     * Transaksi "mutasi" (Pindah Kas) memindah antar kas & netral terhadap laba.
+     */
+    private function cashBalances(Business $business): array
+    {
+        // Arus kas dari transaksi jual/beli/kas_masuk/kas_keluar berdasarkan metode bayar
+        $sumTx = function (array $types, string $kas) use ($business): int {
+            $q = $business->transactions()->whereIn('type', $types);
+            if ($kas === 'tunai') {
+                $q->where(fn ($w) => $w->where('payment_method', 'tunai')->orWhereNull('payment_method'));
+            } else {
+                $q->whereIn('payment_method', ['transfer', 'qris']);
+            }
+            return (int) $q->sum('total');
+        };
+
+        // Cicilan piutang masuk / hutang keluar per metode (null dianggap tunai)
+        $recPay = function (string $method) use ($business): int {
+            $q = \App\Models\ReceivablePayment::whereHas('receivable', fn ($r) => $r->where('business_id', $business->id));
+            $method === 'tunai'
+                ? $q->where(fn ($w) => $w->where('method', 'tunai')->orWhereNull('method'))
+                : $q->where('method', 'transfer');
+            return (int) $q->sum('amount');
+        };
+        $payPay = function (string $method) use ($business): int {
+            $q = \App\Models\PayablePayment::whereHas('payable', fn ($p) => $p->where('business_id', $business->id));
+            $method === 'tunai'
+                ? $q->where(fn ($w) => $w->where('method', 'tunai')->orWhereNull('method'))
+                : $q->where('method', 'transfer');
+            return (int) $q->sum('amount');
+        };
+
+        // Pindah Kas (mutasi)
+        $mutasi = fn (string $col, string $kas): int => (int) $business->transactions()
+            ->where('type', 'mutasi')->where($col, $kas)->sum('total');
+
+        $tunai = $sumTx(['jual', 'kas_masuk'], 'tunai') - $sumTx(['beli', 'kas_keluar'], 'tunai')
+            + $recPay('tunai') - $payPay('tunai')
+            + $mutasi('cash_to', 'tunai') - $mutasi('cash_from', 'tunai');
+
+        $bank = $sumTx(['jual', 'kas_masuk'], 'bank') - $sumTx(['beli', 'kas_keluar'], 'bank')
+            + $recPay('transfer') - $payPay('transfer')
+            + $mutasi('cash_to', 'bank') - $mutasi('cash_from', 'bank');
+
+        return ['tunai' => $tunai, 'bank' => $bank];
     }
 
     public function contact(Request $request, Business $business): JsonResponse
