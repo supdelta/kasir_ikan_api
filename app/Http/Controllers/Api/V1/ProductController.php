@@ -23,6 +23,7 @@ class ProductController extends Controller
         $data = $request->validate([
             'name'      => 'required|string|max:255',
             'category'  => 'nullable|string|max:100',
+            'barcode'   => 'nullable|string|max:100',
             'stock_kg'  => 'nullable|numeric|min:0',
             'buy_price' => 'nullable|integer|min:0',
             'sell_price'=> 'nullable|integer|min:0',
@@ -43,6 +44,7 @@ class ProductController extends Controller
         $data = $request->validate([
             'name' => 'sometimes|string|max:255',
             'category' => 'nullable|string|max:100',
+            'barcode' => 'nullable|string|max:100',
             'stock_kg' => 'sometimes|numeric|min:0',
             'buy_price' => 'sometimes|integer|min:0',
             'sell_price' => 'sometimes|integer|min:0',

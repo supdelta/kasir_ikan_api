@@ -10,7 +10,7 @@ class Product extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['business_id', 'name', 'category', 'stock_kg', 'buy_price', 'sell_price', 'photo'];
+    protected $fillable = ['business_id', 'name', 'category', 'barcode', 'stock_kg', 'buy_price', 'sell_price', 'photo'];
 
     protected $appends = ['photo_url'];
 
