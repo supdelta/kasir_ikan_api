@@ -32,7 +32,63 @@ class TransactionController extends Controller
             $query->whereDate('transaction_date', $request->date);
         }
 
-        return response()->json($query->paginate(50));
+        $paginator = $query->paginate(50);
+        $items = collect($paginator->items())->map(fn ($t) => $t->toArray());
+
+        // Sertakan pembayaran piutang/hutang sebagai arus kas (read-only, entri virtual).
+        // Penerimaan piutang → uang masuk; pembayaran hutang → uang keluar.
+        if ($member->isOwner() || $member->can_view_transactions) {
+            $hasDate = $request->has('date');
+            $from = $hasDate ? \Carbon\Carbon::parse($request->date)->startOfDay() : null;
+            $to   = $hasDate ? \Carbon\Carbon::parse($request->date)->endOfDay() : null;
+            $limit = $hasDate ? 500 : 50;
+
+            $recPays = \App\Models\ReceivablePayment::whereHas('receivable', fn ($q) => $q->where('business_id', $business->id))
+                ->when($hasDate, fn ($q) => $q->whereBetween('paid_at', [$from, $to]))
+                ->with('receivable:id,customer_name')
+                ->orderByDesc('paid_at')->limit($limit)->get()
+                ->map(fn ($p) => [
+                    'id' => -(3000000 + $p->id),
+                    'is_payment' => true,
+                    'type' => 'penerimaan_piutang',
+                    'total' => (int) $p->amount,
+                    'payment_method' => $p->method ?? 'tunai',
+                    'note' => 'Penerimaan Piutang - ' . ($p->receivable->customer_name ?? '-'),
+                    'customer_name' => $p->receivable->customer_name,
+                    'transaction_number' => null,
+                    'kasir_session_id' => null,
+                    'created_at' => $p->paid_at,
+                    'transaction_date' => optional($p->paid_at)->toDateString(),
+                ]);
+
+            $payPays = \App\Models\PayablePayment::whereHas('payable', fn ($q) => $q->where('business_id', $business->id))
+                ->when($hasDate, fn ($q) => $q->whereBetween('created_at', [$from, $to]))
+                ->with('payable:id,supplier_name')
+                ->orderByDesc('created_at')->limit($limit)->get()
+                ->map(fn ($p) => [
+                    'id' => -(1000000 + $p->id),
+                    'is_payment' => true,
+                    'type' => 'pembayaran_hutang',
+                    'total' => (int) $p->amount,
+                    'payment_method' => $p->method ?? 'tunai',
+                    'note' => 'Pembayaran Hutang - ' . ($p->payable->supplier_name ?? '-'),
+                    'transaction_number' => null,
+                    'kasir_session_id' => null,
+                    'created_at' => $p->created_at,
+                    'transaction_date' => optional($p->created_at)->toDateString(),
+                ]);
+
+            $items = $items->concat($recPays)->concat($payPays)
+                ->sortByDesc(fn ($t) => \Carbon\Carbon::parse($t['created_at'])->timestamp)
+                ->values();
+        }
+
+        return response()->json([
+            'data' => $items,
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'total' => $paginator->total(),
+        ]);
     }
 
     public function store(Request $request, Business $business): JsonResponse
