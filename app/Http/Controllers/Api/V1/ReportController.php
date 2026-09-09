@@ -431,6 +431,32 @@ class ReportController extends Controller
                 ]),
             // Saldo kas berjalan (saldo awal + gerakan) untuk ditampilkan di RINGKASAN Excel
             'saldo_kas' => $this->cashBalances($business),
+            // Penerimaan piutang (uang masuk) & pembayaran hutang (uang keluar) pada periode
+            // → ditampilkan di sheet KAS MASUK / KAS KELUAR sebagai arus kas.
+            'penerimaan_piutang' => \App\Models\ReceivablePayment::whereHas(
+                    'receivable', fn ($q) => $q->where('business_id', $business->id))
+                ->whereBetween('paid_at', [$from, $to])
+                ->with('receivable:id,customer_name')
+                ->orderBy('paid_at')
+                ->get()
+                ->map(fn ($p) => [
+                    'date'   => optional($p->paid_at)->format('d/m/Y'),
+                    'name'   => $p->receivable->customer_name ?? '-',
+                    'amount' => (int) $p->amount,
+                    'method' => $p->method ?? 'tunai',
+                ]),
+            'pembayaran_hutang' => \App\Models\PayablePayment::whereHas(
+                    'payable', fn ($q) => $q->where('business_id', $business->id))
+                ->whereBetween('created_at', [$from, $to])
+                ->with('payable:id,supplier_name')
+                ->orderBy('created_at')
+                ->get()
+                ->map(fn ($p) => [
+                    'date'   => optional($p->created_at)->format('d/m/Y'),
+                    'name'   => $p->payable->supplier_name ?? '-',
+                    'amount' => (int) $p->amount,
+                    'method' => $p->method ?? 'tunai',
+                ]),
         ]);
     }
 }
