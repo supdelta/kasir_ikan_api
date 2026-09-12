@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ReceivableController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ScanController;
+use App\Http\Controllers\Api\V1\ShopeeController;
 use App\Http\Controllers\Api\V1\SupplierController;
 use App\Http\Controllers\Api\V1\TransactionController;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,10 @@ Route::prefix('v1')->group(function () {
     Route::post('auth/reset-password', [AuthController::class, 'resetPassword']);
     Route::post('auth/reset-password-code', [AuthController::class, 'resetPasswordWithCode']);
     Route::post('auth/google', [AuthController::class, 'google']);
+
+    // Shopee OAuth callback & webhook — publik (dipanggil server Shopee)
+    Route::get('shopee/callback', [ShopeeController::class, 'callback']);
+    Route::post('shopee/webhook', [ShopeeController::class, 'webhook']);
 
     // Protected
     Route::middleware('auth:sanctum')->group(function () {
@@ -156,6 +161,8 @@ Route::prefix('v1')->group(function () {
             $business->update(array_filter($data, fn($v) => !is_null($v)));
             return $business;
         });
+        // Status & URL authorize Shopee untuk usaha ini (owner)
+        Route::get('businesses/{business}/shopee/status', [ShopeeController::class, 'status']);
         // Upload logo usaha — owner saja
         Route::post('businesses/{business}/logo', function (\Illuminate\Http\Request $req, \App\Models\Business $business) {
             $m = $business->memberFor(auth()->id());
