@@ -39,6 +39,7 @@ Route::prefix('v1')->group(function () {
         Route::post('admin/users/{user}/reset-code', [AuthController::class, 'adminGenerateResetCode']);
         Route::post('admin/users/{user}/impersonate', [AdminController::class, 'impersonate']);
         Route::post('admin/broadcast', [AdminController::class, 'broadcast']);
+        Route::patch('admin/businesses/{business}', [AdminController::class, 'updateBusiness']);
 
         Route::post('auth/change-password', [AuthController::class, 'changePassword']);
 
@@ -127,6 +128,9 @@ Route::prefix('v1')->group(function () {
                 ], 403);
             }
             $data = $req->validate(['name' => 'required|string', 'category' => 'nullable|string']);
+            $data['category'] = $data['category'] ?? 'ikan';
+            // Set modul default sesuai jenis usaha
+            $data['active_modules'] = \App\Support\BusinessModules::defaultsFor($data['category']);
             $business = auth()->user()->businesses()->create($data);
             $business->members()->create([
                 'user_id' => auth()->id(), 'role' => 'owner', 'can_view_reports' => true, 'can_view_piutang' => true, 'can_view_hutang' => true,

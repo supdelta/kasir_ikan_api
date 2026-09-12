@@ -48,7 +48,7 @@ class AdminController extends Controller
         }
 
         return response()->json(
-            $q->limit(50)->get()->map(fn($u) => [
+            $q->limit(50)->with('businesses')->get()->map(fn($u) => [
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
@@ -57,8 +57,38 @@ class AdminController extends Controller
                 'premium_until' => $u->premium_until,
                 'is_super_admin' => (bool) $u->is_super_admin,
                 'created_at' => $u->created_at,
+                'businesses' => $u->businesses->map(fn($b) => [
+                    'id' => $b->id,
+                    'name' => $b->name,
+                    'category' => $b->category,
+                    'modules' => $b->modules,
+                ]),
             ])
         );
+    }
+
+    /// Ubah jenis usaha (category) & modul aktif — super admin.
+    public function updateBusiness(Request $request, \App\Models\Business $business): JsonResponse
+    {
+        $this->ensureAdmin($request);
+        $data = $request->validate([
+            'category' => 'nullable|string',
+            'active_modules' => 'nullable|array',
+            'active_modules.*' => 'string',
+        ]);
+        if (array_key_exists('category', $data) && $data['category'] !== null) {
+            $business->category = $data['category'];
+        }
+        if (array_key_exists('active_modules', $data)) {
+            $business->active_modules = \App\Support\BusinessModules::sanitize($data['active_modules'] ?? []);
+        }
+        $business->save();
+        return response()->json([
+            'id' => $business->id,
+            'name' => $business->name,
+            'category' => $business->category,
+            'modules' => $business->modules,
+        ]);
     }
 
     /// Masuk ke akun user manapun (impersonate) — khusus developer/super admin.

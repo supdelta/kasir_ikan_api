@@ -9,21 +9,37 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Business extends Model
 {
-    protected $fillable = ['user_id', 'name', 'category', 'logo', 'enforce_stock_limit',
+    protected $fillable = ['user_id', 'name', 'category', 'active_modules', 'logo', 'enforce_stock_limit',
         'opening_cash_tunai', 'opening_cash_bank', 'opening_cash_date'];
 
     protected $casts = [
         'enforce_stock_limit' => 'boolean',
+        'active_modules' => 'array',
         'opening_cash_tunai' => 'integer',
         'opening_cash_bank' => 'integer',
         'opening_cash_date' => 'date',
     ];
 
-    protected $appends = ['logo_url'];
+    protected $appends = ['logo_url', 'modules'];
 
     public function getLogoUrlAttribute(): ?string
     {
         return $this->logo ? asset('storage/' . $this->logo) : null;
+    }
+
+    /** Modul aktif efektif — pakai active_modules kalau ada, kalau null pakai default jenis usaha. */
+    public function getModulesAttribute(): array
+    {
+        $mods = $this->active_modules;
+        if (is_array($mods) && count($mods) > 0) {
+            return \App\Support\BusinessModules::sanitize($mods);
+        }
+        return \App\Support\BusinessModules::defaultsFor($this->category);
+    }
+
+    public function hasModule(string $key): bool
+    {
+        return in_array($key, $this->modules, true);
     }
 
     public function user(): BelongsTo
