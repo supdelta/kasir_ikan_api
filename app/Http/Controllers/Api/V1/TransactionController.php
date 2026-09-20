@@ -321,6 +321,60 @@ class TransactionController extends Controller
         }
     }
 
+    /**
+     * Tambah produk (baris) ke nota yang sudah ada — dipakai saat edit transaksi
+     * ingin menambah produk lagi. Baris baru ikut nomor nota + sesi yang sama,
+     * plus metode bayar/customer/tanggal dari transaksi acuan. AMAN: hanya
+     * MENAMBAH baris (reuse createTransaction: stok + piutang/hutang otomatis),
+     * tidak mengubah/menghapus data lama. Atomic (rollback kalau ada yang gagal).
+     */
+    public function addLines(Request $request, Business $business, Transaction $transaction): JsonResponse
+    {
+        $this->authorizeCan($business, 'can_edit_transactions', 'Kamu tidak punya izin untuk mengedit transaksi.');
+        abort_if($transaction->business_id !== $business->id, 403);
+        abort_if(!in_array($transaction->type, ['jual', 'beli']), 422, 'Hanya transaksi jual/beli yang bisa ditambah produk.');
+
+        $data = $request->validate([
+            'lines'                => 'required|array|min:1',
+            'lines.*.product_id'   => 'required|integer',
+            'lines.*.quantity_kg'  => 'required|numeric|min:0.001',
+            'lines.*.unit_price'   => 'required|integer|min:0',
+        ]);
+
+        DB::transaction(function () use ($transaction, $business, $data) {
+            // Pastikan nota punya session id agar baris tergrup jadi satu nota
+            $sessionId = $transaction->kasir_session_id;
+            if (empty($sessionId)) {
+                $sessionId = (string) \Str::uuid();
+                $transaction->update(['kasir_session_id' => $sessionId]);
+            }
+            $number = $transaction->transaction_number;
+            $txDate = $transaction->transaction_date
+                ? $transaction->transaction_date->toDateString()
+                : now()->toDateString();
+
+            foreach ($data['lines'] as $line) {
+                $this->createTransaction([
+                    'type'             => $transaction->type,
+                    'product_id'       => (int) $line['product_id'],
+                    'quantity_kg'      => (float) $line['quantity_kg'],
+                    'unit_price'       => (int) $line['unit_price'],
+                    'payment_method'   => $transaction->payment_method,
+                    'customer_id'      => $transaction->customer_id,
+                    'supplier_id'      => $transaction->supplier_id,
+                    'customer_name'    => $transaction->customer_name,
+                    'customer_phone'   => $transaction->customer_phone,
+                    'transaction_date' => $txDate,
+                    'kasir_session_id' => $sessionId,
+                    '_preset_number'   => $number,
+                    'note'             => $transaction->note,
+                ], $business);
+            }
+        });
+
+        return response()->json(['message' => 'Produk ditambahkan ke nota.'], 201);
+    }
+
     public function destroy(Business $business, Transaction $transaction): JsonResponse
     {
         $this->authorizeCan($business, 'can_delete_records', 'Kamu tidak punya izin untuk menghapus transaksi.');

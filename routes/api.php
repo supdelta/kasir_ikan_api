@@ -315,6 +315,7 @@ Route::prefix('v1')->group(function () {
             Route::post('transactions/bulk-sync', [TransactionController::class, 'bulkSync']);
             Route::post('transactions/import', [TransactionController::class, 'importBulk']);
             Route::put('transactions/{transaction}', [TransactionController::class, 'update']);
+            Route::post('transactions/{transaction}/lines', [TransactionController::class, 'addLines']);
             Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy']);
 
             // Receivables
