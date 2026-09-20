@@ -399,7 +399,7 @@ class TransactionController extends Controller
     {
         return DB::transaction(function () use ($data, $business) {
             // Hitung total di server (§4.1 spec)
-            $total = $data['total'];
+            $total = $data['total'] ?? 0;
             if (!empty($data['product_id']) && !empty($data['quantity_kg']) && !empty($data['unit_price'])) {
                 $total = (int) round((float) $data['quantity_kg'] * (int) $data['unit_price']);
             }
